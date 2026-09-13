@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #0A0A0A; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</helmet>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402,874">
+  <div style="width:100%;height:100%;display:flex;flex-direction:column;position:relative;background:#0A0A0A;color:#F4F6F2;font-family:-apple-system,system-ui,sans-serif;overflow:hidden;">
+
+    <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 24px;">
+        <div style="width:52px;height:52px;border-radius:16px;background:#CFEAC0;display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="26" height="26" viewBox="0 0 24 24"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10" stroke="#0A0A0A" strokeWidth="2" fill="none" strokeLinecap="round"/></svg>
+        </div>
+        <div style="font-size:32px;font-weight:700;letter-spacing:-0.5px;margin-bottom:6px;">Iron Circle</div>
+        <div style="font-size:15px;color:rgba(244,246,242,0.55);line-height:1.5;margin-bottom:28px;">Log workouts with your crew. No app store, just a link.</div>
+
+        <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:7px;">Your name</div>
+        <input type="text" value="{{ authName }}" onChange="{{ onAuthNameChange }}" placeholder="Alex" style="width:100%;box-sizing:border-box;background:#161816;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#F4F6F2;font-size:16px;padding:14px;margin-bottom:16px;" />
+
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button onClick="{{ setModeJoin }}" style="flex:1;border-radius:12px;padding:11px;font-size:13.5px;font-weight:700;border:{{ joinBorder }};background:{{ joinBg }};color:{{ joinColor }};">Join a group</button>
+          <button onClick="{{ setModeCreate }}" style="flex:1;border-radius:12px;padding:11px;font-size:13.5px;font-weight:700;border:{{ createBorder }};background:{{ createBg }};color:{{ createColor }};">Create one</button>
+        </div>
+
+        <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:7px;">{{ groupFieldLabel }}</div>
+        <input type="text" value="{{ authGroup }}" onChange="{{ onAuthGroupChange }}" placeholder="{{ groupFieldPlaceholder }}" style="width:100%;box-sizing:border-box;background:#161816;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#F4F6F2;font-size:16px;padding:14px;margin-bottom:22px;" />
+
+        <button onClick="{{ signIn }}" disabled="{{ signInDisabled }}" style="width:100%;border-radius:14px;padding:15px;font-size:16px;font-weight:700;border:none;background:{{ signInBg }};color:#0A0A0A;">{{ signInLabel }}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+
+          <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:58px 20px 20px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px;">
+                <div style="min-width:0;">
+                  <div style="font-size:13.5px;color:rgba(244,246,242,0.55);margin-bottom:3px;">Hey {{ userName }}</div>
+                  <div style="font-size:26px;font-weight:700;letter-spacing:-0.3px;">{{ groupName }}</div>
+                  <div style="font-size:12.5px;color:rgba(244,246,242,0.45);margin-top:3px;">Invite code {{ groupCode }}</div>
+                </div>
+                <div style="background:rgba(207,234,192,0.12);border:1px solid rgba(207,234,192,0.35);border-radius:18px;padding:7px 13px;flex-shrink:0;">
+                  <span style="font-size:13.5px;font-weight:700;color:#CFEAC0;">{{ totalLogs }} logged</span>
+                </div>
+              </div>
+
+              <div style="background:#161816;border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:17px;margin-bottom:22px;">
+                <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:9px;">Today</div>
+                <sc-if value="{{ todayEntry }}" hint-placeholder-val="{{ null }}">
+                  <div style="display:flex;align-items:center;gap:11px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#CFEAC0;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="15" height="15" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" stroke="#0A0A0A" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                    <div style="min-width:0;">
+                      <div style="font-size:16.5px;font-weight:700;">{{ todayEntry.title }}</div>
+                      <div style="font-size:13px;color:rgba(244,246,242,0.55);">{{ todayEntry.summary }}</div>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ noTodayEntry }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:14.5px;color:rgba(244,246,242,0.65);line-height:1.45;margin-bottom:13px;">Nothing logged yet today.</div>
+                  <button onClick="{{ goWorkouts }}" style="width:100%;background:#CFEAC0;color:#0A0A0A;border:none;border-radius:13px;padding:13px;font-size:15.5px;font-weight:700;">Log a Workout</button>
+                </sc-if>
+              </div>
+
+              <div style="font-size:14.5px;font-weight:700;margin-bottom:11px;">Recent activity</div>
+              <sc-if value="{{ hasLogs }}" hint-placeholder-val="{{ false }}">
+                <sc-for list="{{ recentLogs }}" as="lg" hint-placeholder-count="3">
+                  <div onClick="{{ lg.open }}" style="display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);cursor:pointer;">
+                    <div style="width:40px;height:40px;border-radius:12px;background:rgba(207,234,192,0.14);color:#CFEAC0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ lg.dayShort }}</div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:15.5px;font-weight:600;">{{ lg.title }}</div>
+                      <div style="font-size:12.5px;color:rgba(244,246,242,0.5);">{{ lg.summary }}</div>
+                    </div>
+                    <span style="font-size:18px;color:rgba(244,246,242,0.3);flex-shrink:0;">›</span>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{ noLogs }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:14px;color:rgba(244,246,242,0.45);line-height:1.5;">Your logged workouts will show up here.</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isWorkouts }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:58px 20px 20px;">
+              <div style="font-size:26px;font-weight:700;margin-bottom:3px;">Workouts</div>
+              <div style="font-size:13.5px;color:rgba(244,246,242,0.55);margin-bottom:18px;">Your saved routines. Tap one to log it today.</div>
+
+              <div style="display:flex;gap:8px;margin-bottom:20px;">
+                <button onClick="{{ openBuilder }}" style="flex:1;background:#CFEAC0;color:#0A0A0A;border:none;border-radius:12px;padding:12px;font-size:13.5px;font-weight:700;">+ New workout</button>
+                <label style="flex:1;text-align:center;background:none;border:1px solid rgba(207,234,192,0.4);color:#CFEAC0;border-radius:12px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">
+                  Import Excel
+                  <input type="file" accept=".xlsx,.xls,.csv" onChange="{{ importFile }}" style="display:none;" />
+                </label>
+              </div>
+
+              <sc-if value="{{ importMessage }}" hint-placeholder-val="{{ null }}">
+                <div style="background:rgba(207,234,192,0.1);border:1px solid rgba(207,234,192,0.3);border-radius:12px;padding:11px 14px;font-size:13px;color:#CFEAC0;line-height:1.45;margin-bottom:18px;">{{ importMessage }}</div>
+              </sc-if>
+
+              <sc-for list="{{ workoutCards }}" as="w" hint-placeholder-count="3">
+                <div style="background:#161816;border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:16px;margin-bottom:12px;">
+                  <div onClick="{{ w.open }}" style="cursor:pointer;">
+                    <div style="font-size:17px;font-weight:700;margin-bottom:3px;">{{ w.title }}</div>
+                    <div style="font-size:13px;color:rgba(244,246,242,0.55);line-height:1.45;margin-bottom:10px;">{{ w.description }}</div>
+                    <div style="font-size:12.5px;color:#CFEAC0;font-weight:600;">{{ w.countLabel }}</div>
+                  </div>
+                  <sc-if value="{{ w.historyLabel }}" hint-placeholder-val="{{ null }}">
+                    <div style="margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,0.08);">
+                      <div style="font-size:11.5px;color:rgba(244,246,242,0.45);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:7px;">{{ w.historyLabel }}</div>
+                      <sc-for list="{{ w.historyRows }}" as="hr" hint-placeholder-count="2">
+                        <div onClick="{{ hr.open }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;cursor:pointer;">
+                          <span style="font-size:12.5px;color:rgba(244,246,242,0.7);">{{ hr.dayShort }}</span>
+                          <span style="font-size:12.5px;color:rgba(244,246,242,0.45);">{{ hr.setSummary }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <div style="display:flex;gap:8px;margin-top:13px;">
+                    <button onClick="{{ w.open }}" style="flex:1;background:none;border:1px solid rgba(255,255,255,0.2);color:#F4F6F2;border-radius:11px;padding:10px;font-size:13px;font-weight:600;">Edit</button>
+                    <button onClick="{{ w.log }}" style="flex:1;background:#CFEAC0;color:#0A0A0A;border:none;border-radius:11px;padding:10px;font-size:13px;font-weight:700;">Log today</button>
+                  </div>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{ noWorkouts }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:14px;color:rgba(244,246,242,0.45);line-height:1.5;">No workouts yet. Create one or import an Excel sheet — one sheet per workout, with Name / Sets / Reps columns.</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:58px 20px 20px;">
+              <div style="font-size:26px;font-weight:700;margin-bottom:3px;">History</div>
+              <div style="font-size:13.5px;color:rgba(244,246,242,0.55);margin-bottom:18px;">{{ monthLabel }} · {{ totalLogs }} workouts logged</div>
+
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:7px;">
+                <sc-for list="{{ dowLabels }}" as="dl" hint-placeholder-count="7">
+                  <div style="text-align:center;font-size:11.5px;color:rgba(244,246,242,0.4);">{{ dl.letter }}</div>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:22px;">
+                <sc-for list="{{ cells }}" as="c" hint-placeholder-count="35">
+                  <div onClick="{{ c.open }}" style="height:38px;border-radius:10px;background:{{ c.bg }};border:{{ c.ring }};display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:{{ c.fw }};color:{{ c.fg }};cursor:{{ c.cursor }};">{{ c.label }}</div>
+                </sc-for>
+              </div>
+
+              <div style="font-size:14.5px;font-weight:700;margin-bottom:11px;">All entries</div>
+              <sc-for list="{{ allLogs }}" as="lg" hint-placeholder-count="4">
+                <div onClick="{{ lg.open }}" style="display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.08);cursor:pointer;">
+                  <div style="width:40px;height:40px;border-radius:12px;background:rgba(207,234,192,0.14);color:#CFEAC0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ lg.dayShort }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:15.5px;font-weight:600;">{{ lg.title }}</div>
+                    <div style="font-size:12.5px;color:rgba(244,246,242,0.5);">{{ lg.summary }}</div>
+                  </div>
+                  <span style="font-size:18px;color:rgba(244,246,242,0.3);flex-shrink:0;">›</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ noLogs }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:14px;color:rgba(244,246,242,0.45);line-height:1.5;">Nothing logged yet.</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isGroup }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:58px 20px 20px;">
+              <div style="font-size:26px;font-weight:700;margin-bottom:3px;">{{ groupName }}</div>
+              <div style="font-size:13.5px;color:rgba(244,246,242,0.55);margin-bottom:18px;">{{ memberCountLabel }}</div>
+
+              <div style="background:#161816;border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:16px;margin-bottom:20px;">
+                <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Invite code</div>
+                <div style="font-size:25px;font-weight:700;letter-spacing:3px;color:#CFEAC0;margin-bottom:6px;">{{ groupCode }}</div>
+                <div style="font-size:12.5px;color:rgba(244,246,242,0.5);line-height:1.45;">Share this code and the app link with friends so they can join.</div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:13px;padding:13px;border-radius:15px;background:rgba(207,234,192,0.1);border:1px solid rgba(207,234,192,0.3);margin-bottom:12px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#CFEAC0;color:#0A0A0A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">{{ userInitials }}</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:15.5px;font-weight:700;">{{ userName }}</div>
+                  <div style="font-size:12.5px;color:rgba(244,246,242,0.6);">{{ youStatus }}</div>
+                </div>
+                <div style="font-size:14.5px;font-weight:700;color:#CFEAC0;flex-shrink:0;">{{ totalLogs }}x</div>
+              </div>
+
+              <sc-for list="{{ members }}" as="m" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.08);">
+                  <div style="width:40px;height:40px;border-radius:50%;background:{{ m.color }};color:#0A0A0A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">{{ m.initials }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:15.5px;font-weight:600;">{{ m.name }}</div>
+                    <div style="font-size:12.5px;color:rgba(244,246,242,0.5);">{{ m.status }}</div>
+                  </div>
+                  <div style="font-size:14.5px;font-weight:700;color:rgba(244,246,242,0.85);flex-shrink:0;">{{ m.total }}x</div>
+                </div>
+              </sc-for>
+
+              <button onClick="{{ signOut }}" style="width:100%;background:none;border:1px solid rgba(255,255,255,0.18);color:rgba(244,246,242,0.75);border-radius:12px;padding:13px;font-size:14px;font-weight:600;margin-top:22px;">Sign out</button>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <div style="display:flex;justify-content:space-around;align-items:center;padding:9px 8px 24px;border-top:1px solid rgba(255,255,255,0.08);background:#0A0A0A;flex-shrink:0;">
+          <div onClick="{{ goHome }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:{{ tabColors.home }};">
+            <svg width="21" height="21" viewBox="0 0 24 24"><path d="M4 12L12 5l8 7M6 11v8h5v-5h2v5h5v-8" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span style="font-size:10.5px;font-weight:600;">Home</span>
+          </div>
+          <div onClick="{{ goWorkouts }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:{{ tabColors.workouts }};">
+            <svg width="21" height="21" viewBox="0 0 24 24"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></svg>
+            <span style="font-size:10.5px;font-weight:600;">Workouts</span>
+          </div>
+          <div onClick="{{ goHistory }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:{{ tabColors.history }};">
+            <svg width="21" height="21" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.8" fill="none"/><path d="M4 10h16M8 4v4M16 4v4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></svg>
+            <span style="font-size:10.5px;font-weight:600;">History</span>
+          </div>
+          <div onClick="{{ goGroup }}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:{{ tabColors.group }};">
+            <svg width="21" height="21" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.8" fill="none"/><circle cx="17" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.8" fill="none"/><path d="M4 20c0-3 2.5-5 5-5s5 2 5 5M14.5 20c0-2.2 1.6-4 3.8-4s3.7 1.8 3.7 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round"/></svg>
+            <span style="font-size:10.5px;font-weight:600;">Group</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ builder }}" hint-placeholder-val="{{ null }}">
+      <div style="position:absolute;inset:0;background:#0A0A0A;z-index:60;display:flex;flex-direction:column;">
+        <div style="padding:56px 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;">
+          <div style="font-size:21px;font-weight:700;">{{ builder.heading }}</div>
+          <button onClick="{{ closeBuilder }}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#F4F6F2;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:0 20px;min-height:0;">
+          <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:7px;">Title</div>
+          <input type="text" value="{{ builder.title }}" onChange="{{ builder.onTitleChange }}" placeholder="Leg Day" style="width:100%;box-sizing:border-box;background:#161816;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#F4F6F2;font-size:16px;padding:13px;margin-bottom:15px;" />
+
+          <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:7px;">Description</div>
+          <textarea value="{{ builder.description }}" onChange="{{ builder.onDescChange }}" placeholder="Heavy compound lifts, 45 minutes." rows="2" style="width:100%;box-sizing:border-box;background:#161816;border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#F4F6F2;font-size:15px;padding:13px;margin-bottom:20px;font-family:inherit;resize:none;"></textarea>
+
+          <div style="font-size:12px;color:rgba(244,246,242,0.5);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Exercises</div>
+
+          <sc-for list="{{ builder.exercises }}" as="bx" hint-placeholder-count="2">
+            <div style="background:#161816;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px;margin-bottom:11px;">
+              <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:11px;">
+                <input type="text" value="{{ bx.name }}" onChange="{{ bx.onNameChange }}" placeholder="Exercise name" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#F4F6F2;font-size:15px;font-weight:600;padding:10px 11px;" />
+                <button onClick="{{ bx.remove }}" style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:rgba(244,246,242,0.6);font-size:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">×</button>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+                <span style="font-size:12.5px;color:rgba(244,246,242,0.55);">Sets</span>
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <button onClick="{{ bx.removeSet }}" style="width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#F4F6F2;font-size:16px;display:flex;align-items:center;justify-content:center;">−</button>
+                  <span style="font-size:14.5px;font-weight:700;min-width:16px;text-align:center;">{{ bx.setCount }}</span>
+                  <button onClick="{{ bx.addSet }}" style="width:30px;height:30px;border-radius:9px;background:rgba(207,234,192,0.15);border:1px solid rgba(207,234,192,0.4);color:#CFEAC0;font-size:16px;display:flex;align-items:center;justify-content:center;">+</button>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:7px;">
+                <sc-for list="{{ bx.sets }}" as="st" hint-placeholder-count="3">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:10.5px;color:rgba(244,246,242,0.45);margin-bottom:4px;text-align:center;">Set {{ st.label }}</div>
+                    <input type="text" value="{{ st.value }}" onChange="{{ st.onChange }}" placeholder="reps" style="width:100%;box-sizing:border-box;text-align:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#F4F6F2;font-size:14px;padding:9px 4px;" />
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+
+          <button onClick="{{ builder.addExercise }}" style="width:100%;background:none;border:1px dashed rgba(207,234,192,0.4);color:#CFEAC0;border-radius:12px;padding:12px;font-size:13.5px;font-weight:600;margin-bottom:20px;">+ Add exercise</button>
+        </div>
+
+        <div style="padding:14px 20px 22px;border-top:1px solid rgba(255,255,255,0.08);flex-shrink:0;display:flex;gap:9px;">
+          <sc-if value="{{ builder.canDelete }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ builder.remove }}" style="background:none;border:1px solid rgba(255,255,255,0.18);color:rgba(244,246,242,0.7);border-radius:13px;padding:14px 16px;font-size:14.5px;font-weight:600;flex-shrink:0;">Delete</button>
+          </sc-if>
+          <button onClick="{{ builder.save }}" disabled="{{ builder.saveDisabled }}" style="flex:1;border-radius:13px;padding:14px;font-size:15.5px;font-weight:700;border:none;background:{{ builder.saveBg }};color:#0A0A0A;">Save workout</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ logSheet }}" hint-placeholder-val="{{ null }}">
+      <div style="position:absolute;inset:0;background:#0A0A0A;z-index:60;display:flex;flex-direction:column;">
+        <div style="padding:56px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;">
+          <div style="min-width:0;">
+            <div style="font-size:21px;font-weight:700;">{{ logSheet.title }}</div>
+            <div style="font-size:13px;color:rgba(244,246,242,0.55);margin-top:2px;">{{ logSheet.dateLabel }}</div>
+          </div>
+          <button onClick="{{ closeLogSheet }}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#F4F6F2;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">×</button>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:0 20px;min-height:0;">
+          <sc-if value="{{ logSheet.description }}" hint-placeholder-val="{{ null }}">
+            <div style="font-size:14px;color:rgba(244,246,242,0.65);line-height:1.5;margin-bottom:14px;">{{ logSheet.description }}</div>
+          </sc-if>
+          <sc-if value="{{ logSheet.prefillNote }}" hint-placeholder-val="{{ null }}">
+            <div style="background:rgba(207,234,192,0.1);border:1px solid rgba(207,234,192,0.3);border-radius:12px;padding:11px 13px;font-size:12.5px;color:#CFEAC0;line-height:1.45;margin-bottom:16px;">{{ logSheet.prefillNote }}</div>
+          </sc-if>
+          <sc-for list="{{ logSheet.exercises }}" as="lx" hint-placeholder-count="3">
+            <div style="background:#161816;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px;margin-bottom:11px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+                <div style="min-width:0;">
+                  <div style="font-size:15.5px;font-weight:700;">{{ lx.name }}</div>
+                  <sc-if value="{{ lx.lastNote }}" hint-placeholder-val="{{ null }}">
+                    <div style="font-size:11.5px;color:rgba(244,246,242,0.45);margin-top:2px;">{{ lx.lastNote }}</div>
+                  </sc-if>
+                </div>
+                <div style="font-size:12.5px;color:rgba(244,246,242,0.5);flex-shrink:0;">{{ lx.setLabel }}</div>
+              </div>
+              <div style="display:flex;gap:7px;">
+                <sc-for list="{{ lx.sets }}" as="st" hint-placeholder-count="3">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:10.5px;color:rgba(244,246,242,0.45);margin-bottom:4px;text-align:center;">Set {{ st.label }}</div>
+                    <input type="text" value="{{ st.value }}" onChange="{{ st.onChange }}" placeholder="reps" style="width:100%;box-sizing:border-box;text-align:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#F4F6F2;font-size:14px;padding:9px 4px;" />
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="padding:14px 20px 22px;border-top:1px solid rgba(255,255,255,0.08);flex-shrink:0;display:flex;gap:9px;">
+          <sc-if value="{{ logSheet.canDelete }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ logSheet.remove }}" style="background:none;border:1px solid rgba(255,255,255,0.18);color:rgba(244,246,242,0.7);border-radius:13px;padding:14px 16px;font-size:14.5px;font-weight:600;flex-shrink:0;">Remove</button>
+          </sc-if>
+          <button onClick="{{ logSheet.save }}" style="flex:1;border-radius:13px;padding:14px;font-size:15.5px;font-weight:700;border:none;background:#CFEAC0;color:#0A0A0A;">{{ logSheet.saveLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 430, &quot;height&quot;: 900 }
+}">
+const STORE_KEY = 'ironcircle.mvp.v1';
+
+const SEED_WORKOUTS = [
+  {
+    id: 'w-push', title: 'Push Day', description: 'Chest, shoulders and triceps. Roughly 45 minutes.',
+    exercises: [
+      { id: 'e1', name: 'Bench Press', sets: ['10', '8', '6'] },
+      { id: 'e2', name: 'Overhead Press', sets: ['10', '10', '8'] },
+      { id: 'e3', name: 'Tricep Dips', sets: ['12', '12', '10'] },
+    ],
+  },
+  {
+    id: 'w-pull', title: 'Pull Day', description: 'Back and biceps, heavy rows first.',
+    exercises: [
+      { id: 'e4', name: 'Pull-Ups', sets: ['8', '8', '6'] },
+      { id: 'e5', name: 'Barbell Row', sets: ['10', '10', '8'] },
+      { id: 'e6', name: 'Bicep Curls', sets: ['12', '12', '12'] },
+    ],
+  },
+  {
+    id: 'w-legs', title: 'Leg Day', description: 'Squat focus with accessory work.',
+    exercises: [
+      { id: 'e7', name: 'Back Squat', sets: ['8', '6', '5'] },
+      { id: 'e8', name: 'Romanian Deadlift', sets: ['10', '10', '8'] },
+      { id: 'e9', name: 'Walking Lunges', sets: ['12', '12'] },
+    ],
+  },
+];
+
+const MEMBERS = [
+  { name: 'Ally', total: 14, initials: 'AL', color: '#CFEAC0', status: 'Logged today' },
+  { name: 'Jordan', total: 9, initials: 'JD', color: '#9FCB8E', status: 'Logged yesterday' },
+  { name: 'Priya', total: 6, initials: 'PR', color: '#7FB0A8', status: '3 days ago' },
+];
+
+const uid = (p) => p + '-' + Math.random().toString(36).slice(2, 8);
+const isoDay = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+class Component extends DCLogic {
+  state = {
+    user: null, group: null,
+    authName: '', authGroup: '', authMode: 'join',
+    tab: 'home',
+    workouts: SEED_WORKOUTS,
+    logs: {},
+    builderId: null, builderDraft: null,
+    logSheetDate: null, logSheetDraft: null, logSheetIsNew: false,
+    logSheetPrefillFrom: null, logSheetPrev: null,
+    importMessage: null,
+  };
+
+  componentDidMount() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        this.setState({
+          user: saved.user ?? null,
+          group: saved.group ?? null,
+          workouts: saved.workouts ?? SEED_WORKOUTS,
+          logs: saved.logs ?? {},
+        });
+      }
+    } catch (e) { /* first run */ }
+  }
+
+  persist(patch) {
+    this.setState(patch, () => {
+      const { user, group, workouts, logs } = this.state;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({ user, group, workouts, logs })); } catch (e) {}
+    });
+  }
+
+  signIn() {
+    const name = this.state.authName.trim();
+    const raw = this.state.authGroup.trim();
+    if (!name || !raw) return;
+    const group = this.state.authMode === 'create'
+      ? { name: raw, code: raw.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase().padEnd(4, 'X') + String(Math.floor(10 + Math.random() * 89)) }
+      : { name: 'Iron Circle', code: raw.toUpperCase() };
+    this.persist({ user: { name }, group, tab: 'home' });
+  }
+
+  importFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'binary' });
+        const imported = [];
+        wb.SheetNames.forEach(sheetName => {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+          const exercises = rows.map(row => {
+            const get = (...keys) => {
+              for (const k of Object.keys(row)) {
+                if (keys.some(key => k.trim().toLowerCase() === key)) return String(row[k]).trim();
+              }
+              return '';
+            };
+            const name = get('name', 'exercise', 'movement', 'lift');
+            if (!name) return null;
+            const setCount = Math.min(Math.max(parseInt(get('sets'), 10) || 3, 1), 6);
+            const repsRaw = get('reps', 'rep', 'repetitions');
+            const repParts = repsRaw.split(/[,/x×]/).map(s => s.trim()).filter(Boolean);
+            const sets = repParts.length > 1
+              ? repParts.slice(0, 6)
+              : Array.from({ length: setCount }, () => repParts[0] || '');
+            return { id: uid('e'), name, sets };
+          }).filter(Boolean);
+          if (exercises.length) {
+            imported.push({ id: uid('w'), title: sheetName, description: 'Imported from ' + file.name, exercises });
+          }
+        });
+        if (!imported.length) {
+          this.setState({ importMessage: 'No exercises found. Each sheet needs a header row with a Name column (Sets and Reps optional).' });
+          return;
+        }
+        this.persist({
+          workouts: [...imported, ...this.state.workouts],
+          importMessage: `Imported ${imported.length} workout${imported.length === 1 ? '' : 's'} from ${file.name}.`,
+        });
+      } catch (err) {
+        this.setState({ importMessage: 'Could not read that file. Try a .xlsx or .csv with a header row.' });
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  }
+
+  openBuilder(workout) {
+    const draft = workout
+      ? JSON.parse(JSON.stringify(workout))
+      : { id: uid('w'), title: '', description: '', exercises: [{ id: uid('e'), name: '', sets: ['', '', ''] }] };
+    this.setState({ builderId: draft.id, builderDraft: draft });
+  }
+
+  patchDraft(fn) {
+    this.setState(s => {
+      const draft = JSON.parse(JSON.stringify(s.builderDraft));
+      fn(draft);
+      return { builderDraft: draft };
+    });
+  }
+
+  saveBuilder() {
+    const draft = this.state.builderDraft;
+    if (!draft.title.trim()) return;
+    const cleaned = {
+      ...draft,
+      title: draft.title.trim(),
+      description: draft.description.trim(),
+      exercises: draft.exercises.filter(ex => ex.name.trim()).map(ex => ({ ...ex, name: ex.name.trim() })),
+    };
+    const exists = this.state.workouts.some(w => w.id === cleaned.id);
+    const workouts = exists
+      ? this.state.workouts.map(w => (w.id === cleaned.id ? cleaned : w))
+      : [cleaned, ...this.state.workouts];
+    this.persist({ workouts, builderId: null, builderDraft: null });
+  }
+
+  deleteWorkout(id) {
+    this.persist({ workouts: this.state.workouts.filter(w => w.id !== id), builderId: null, builderDraft: null });
+  }
+
+  lastLogFor(workoutId, excludeKey) {
+    const { logs } = this.state;
+    const keys = Object.keys(logs).filter(k => k !== excludeKey && logs[k].workoutId === workoutId).sort().reverse();
+    return keys.length ? { key: keys[0], entry: logs[keys[0]] } : null;
+  }
+
+  openLogSheet(workout, dateKey, isNew) {
+    const draft = JSON.parse(JSON.stringify({
+      workoutId: workout.id, title: workout.title, description: workout.description, exercises: workout.exercises,
+    }));
+    const last = isNew ? this.lastLogFor(workout.id, dateKey) : null;
+    if (last) {
+      draft.exercises = draft.exercises.map(ex => {
+        const prev = last.entry.exercises.find(p => p.id === ex.id || p.name === ex.name);
+        return prev ? { ...ex, sets: [...prev.sets] } : ex;
+      });
+    }
+    this.setState({
+      logSheetDate: dateKey,
+      logSheetIsNew: isNew,
+      logSheetDraft: draft,
+      logSheetPrefillFrom: last ? new Date(last.key + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
+      logSheetPrev: last ? last.entry : null,
+    });
+  }
+
+  patchLogDraft(fn) {
+    this.setState(s => {
+      const draft = JSON.parse(JSON.stringify(s.logSheetDraft));
+      fn(draft);
+      return { logSheetDraft: draft };
+    });
+  }
+
+  saveLog() {
+    const { logSheetDate, logSheetDraft, logs } = this.state;
+    this.persist({
+      logs: { ...logs, [logSheetDate]: logSheetDraft },
+      logSheetDate: null, logSheetDraft: null, logSheetIsNew: false,
+      logSheetPrefillFrom: null, logSheetPrev: null,
+      tab: 'home',
+    });
+  }
+
+  removeLog() {
+    const { logSheetDate, logs } = this.state;
+    const next = { ...logs };
+    delete next[logSheetDate];
+    this.persist({ logs: next, logSheetDate: null, logSheetDraft: null, logSheetIsNew: false });
+  }
+
+  summaryOf(entry) {
+    const count = entry.exercises.length;
+    const setTotal = entry.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+    return `${count} exercise${count === 1 ? '' : 's'} · ${setTotal} sets`;
+  }
+
+  renderVals() {
+    const { user, group, authName, authGroup, authMode, tab, workouts, logs,
+            builderDraft, logSheetDate, logSheetDraft, logSheetIsNew, logSheetPrefillFrom, logSheetPrev, importMessage } = this.state;
+
+    const now = new Date();
+    const todayKey = isoDay(now);
+    const year = now.getFullYear(), month = now.getMonth(), todayDate = now.getDate();
+
+    const logKeys = Object.keys(logs).sort().reverse();
+    const logRow = (key) => {
+      const entry = logs[key];
+      const d = new Date(key + 'T00:00:00');
+      return {
+        key, title: entry.title,
+        summary: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · ' + this.summaryOf(entry),
+        dayShort: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() + ' ' + d.getDate(),
+        setSummary: this.summaryOf(entry),
+        open: () => this.openLogSheet({ id: entry.workoutId, title: entry.title, description: entry.description, exercises: entry.exercises }, key, false),
+      };
+    };
+
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDow; i++) {
+      cells.push({ key: 'b' + i, label: '', bg: 'transparent', fg: 'transparent', ring: '1px solid transparent', fw: 500, cursor: 'default' });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const key = isoDay(new Date(year, month, day));
+      const done = !!logs[key];
+      const isToday = day === todayDate;
+      cells.push({
+        key: 'd' + day, label: String(day),
+        bg: done ? '#CFEAC0' : 'transparent',
+        fg: done ? '#0A0A0A' : (isToday ? '#CFEAC0' : '#F4F6F2'),
+        ring: isToday ? '1px solid #CFEAC0' : '1px solid transparent',
+        fw: isToday ? 700 : 500,
+        cursor: done ? 'pointer' : 'default',
+        open: done ? logRow(key).open : undefined,
+      });
+    }
+
+    const builder = builderDraft ? {
+      heading: workouts.some(w => w.id === builderDraft.id) ? 'Edit Workout' : 'New Workout',
+      title: builderDraft.title,
+      description: builderDraft.description,
+      onTitleChange: (e) => { const v = e.target.value; this.patchDraft(d => { d.title = v; }); },
+      onDescChange: (e) => { const v = e.target.value; this.patchDraft(d => { d.description = v; }); },
+      exercises: builderDraft.exercises.map((ex, i) => ({
+        key: ex.id, name: ex.name, setCount: ex.sets.length,
+        onNameChange: (e) => { const v = e.target.value; this.patchDraft(d => { d.exercises[i].name = v; }); },
+        remove: () => this.patchDraft(d => { d.exercises.splice(i, 1); }),
+        addSet: () => this.patchDraft(d => { if (d.exercises[i].sets.length < 6) d.exercises[i].sets.push(''); }),
+        removeSet: () => this.patchDraft(d => { if (d.exercises[i].sets.length > 1) d.exercises[i].sets.pop(); }),
+        sets: ex.sets.map((v, j) => ({
+          key: ex.id + '-' + j, label: j + 1, value: v,
+          onChange: (e) => { const val = e.target.value; this.patchDraft(d => { d.exercises[i].sets[j] = val; }); },
+        })),
+      })),
+      addExercise: () => this.patchDraft(d => { d.exercises.push({ id: uid('e'), name: '', sets: ['', '', ''] }); }),
+      save: () => this.saveBuilder(),
+      saveDisabled: !builderDraft.title.trim(),
+      saveBg: builderDraft.title.trim() ? '#CFEAC0' : 'rgba(207,234,192,0.3)',
+      canDelete: workouts.some(w => w.id === builderDraft.id),
+      remove: () => this.deleteWorkout(builderDraft.id),
+    } : null;
+
+    const logSheet = logSheetDraft ? {
+      title: logSheetDraft.title,
+      description: logSheetDraft.description || null,
+      dateLabel: new Date(logSheetDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      prefillNote: logSheetPrefillFrom ? 'Sets and reps carried over from ' + logSheetPrefillFrom + ' — edit anything you changed today.' : null,
+      exercises: logSheetDraft.exercises.map((ex, i) => {
+        const prev = logSheetPrev ? logSheetPrev.exercises.find(p => p.id === ex.id || p.name === ex.name) : null;
+        return {
+        key: ex.id, name: ex.name,
+        lastNote: prev ? 'Last: ' + prev.sets.map(v => v || '–').join(' / ') : null,
+        setLabel: ex.sets.length + ' sets',
+        sets: ex.sets.map((v, j) => ({
+          key: ex.id + '-' + j, label: j + 1, value: v,
+          onChange: (e) => { const val = e.target.value; this.patchLogDraft(d => { d.exercises[i].sets[j] = val; }); },
+        })),
+        };
+      }),
+      save: () => this.saveLog(),
+      saveLabel: logSheetIsNew ? 'Log this workout' : 'Save changes',
+      canDelete: !logSheetIsNew,
+      remove: () => this.removeLog(),
+    } : null;
+
+    const todayEntry = logs[todayKey] ? { title: logs[todayKey].title, summary: this.summaryOf(logs[todayKey]) } : null;
+
+    return {
+      isAuth: !user, isApp: !!user,
+      authName, authGroup,
+      onAuthNameChange: (e) => this.setState({ authName: e.target.value }),
+      onAuthGroupChange: (e) => this.setState({ authGroup: e.target.value }),
+      setModeJoin: () => this.setState({ authMode: 'join', authGroup: '' }),
+      setModeCreate: () => this.setState({ authMode: 'create', authGroup: '' }),
+      joinBg: authMode === 'join' ? 'rgba(207,234,192,0.15)' : 'transparent',
+      joinBorder: authMode === 'join' ? '1px solid #CFEAC0' : '1px solid rgba(255,255,255,0.15)',
+      joinColor: authMode === 'join' ? '#CFEAC0' : 'rgba(244,246,242,0.7)',
+      createBg: authMode === 'create' ? 'rgba(207,234,192,0.15)' : 'transparent',
+      createBorder: authMode === 'create' ? '1px solid #CFEAC0' : '1px solid rgba(255,255,255,0.15)',
+      createColor: authMode === 'create' ? '#CFEAC0' : 'rgba(244,246,242,0.7)',
+      groupFieldLabel: authMode === 'create' ? 'Group name' : 'Invite code',
+      groupFieldPlaceholder: authMode === 'create' ? 'Iron Circle' : 'IRON42',
+      signIn: () => this.signIn(),
+      signInDisabled: !authName.trim() || !authGroup.trim(),
+      signInBg: (authName.trim() && authGroup.trim()) ? '#CFEAC0' : 'rgba(207,234,192,0.3)',
+      signInLabel: authMode === 'create' ? 'Create group' : 'Join group',
+      signOut: () => this.persist({ user: null, group: null, tab: 'home', authName: '', authGroup: '' }),
+
+      userName: user ? user.name : '',
+      userInitials: user ? user.name.trim().slice(0, 2).toUpperCase() : '',
+      groupName: group ? group.name : '',
+      groupCode: group ? group.code : '',
+      memberCountLabel: (MEMBERS.length + 1) + ' members',
+      members: MEMBERS,
+      youStatus: todayEntry ? 'Logged today' : 'Not logged yet',
+
+      isHome: tab === 'home', isWorkouts: tab === 'workouts', isHistory: tab === 'history', isGroup: tab === 'group',
+      goHome: () => this.setState({ tab: 'home' }),
+      goWorkouts: () => this.setState({ tab: 'workouts' }),
+      goHistory: () => this.setState({ tab: 'history' }),
+      goGroup: () => this.setState({ tab: 'group' }),
+      tabColors: {
+        home: tab === 'home' ? '#CFEAC0' : 'rgba(244,246,242,0.5)',
+        workouts: tab === 'workouts' ? '#CFEAC0' : 'rgba(244,246,242,0.5)',
+        history: tab === 'history' ? '#CFEAC0' : 'rgba(244,246,242,0.5)',
+        group: tab === 'group' ? '#CFEAC0' : 'rgba(244,246,242,0.5)',
+      },
+
+      todayEntry, noTodayEntry: !todayEntry,
+      totalLogs: logKeys.length,
+      hasLogs: logKeys.length > 0, noLogs: logKeys.length === 0,
+      recentLogs: logKeys.slice(0, 4).map(logRow),
+      allLogs: logKeys.map(logRow),
+      monthLabel: now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      dowLabels: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((letter, i) => ({ key: 'dow' + i, letter })),
+      cells,
+
+      workoutCards: workouts.map(w => {
+        const wKeys = logKeys.filter(k => logs[k].workoutId === w.id);
+        return {
+        key: w.id, title: w.title, description: w.description,
+        countLabel: w.exercises.length + ' exercises · ' + w.exercises.reduce((n, ex) => n + ex.sets.length, 0) + ' sets',
+        historyLabel: wKeys.length
+          ? 'Logged ' + wKeys.length + 'x · last ' + new Date(wKeys[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null,
+        historyRows: wKeys.slice(0, 3).map(logRow),
+        open: () => this.openBuilder(w),
+        log: (e) => { e.stopPropagation(); this.openLogSheet(w, todayKey, true); },
+        };
+      }),
+      noWorkouts: workouts.length === 0,
+      openBuilder: () => this.openBuilder(null),
+      closeBuilder: () => this.setState({ builderId: null, builderDraft: null }),
+      builder,
+      importFile: (e) => this.importFile(e),
+      importMessage,
+      logSheet,
+      closeLogSheet: () => this.setState({ logSheetDate: null, logSheetDraft: null, logSheetIsNew: false, logSheetPrefillFrom: null, logSheetPrev: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<![CDATA[<helmet data-dc-atomics>
+<style>
+  body{margin:0;background:oklch(0.1 0.003 240);}
+  * { box-sizing: border-box; }
+  .wc-scroll::-webkit-scrollbar{width:0;height:0;}
+  @keyframes wc-fade { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:oklch(0.1 0.003 240);padding:40px 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="390,844">
+    <div style="height:100%;display:flex;flex-direction:column;background:oklch(0.14 0.004 240);color:oklch(0.96 0.003 240);">
+
+      <!-- HEADER -->
+      <div style="padding:54px 22px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div>
+          <div style="font-size:12px;letter-spacing:0.06em;color:oklch(0.6 0.01 240);text-transform:uppercase;margin-bottom:2px;">{{ groupName }}</div>
+          <div style="font-size:24px;font-weight:700;">{{ headerTitle }}</div>
+        </div>
+        <div style="width:38px;height:38px;border-radius:50%;background:oklch(0.24 0.008 240);border:1.5px solid oklch(0.78 0.11 142);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:oklch(0.78 0.11 142);">YO</div>
+      </div>
+
+      <!-- SCROLL AREA -->
+      <div class="wc-scroll" style="flex:1;overflow:auto;padding:0 20px 24px;">
+
+        <!-- ===== HOME TAB ===== -->
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div style="animation:wc-fade 0.25s ease;display:flex;flex-direction:column;gap:16px;">
+
+            <!-- streak card -->
+            <div style="background:linear-gradient(135deg, oklch(0.28 0.05 142), oklch(0.2 0.03 142));border-radius:18px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:13px;color:oklch(0.85 0.06 142);margin-bottom:4px;">Crew streak</div>
+                <div style="font-size:30px;font-weight:800;line-height:1;">{{ streakCount }} days</div>
+              </div>
+              <div style="display:flex;gap:4px;">
+                <sc-for list="{{ streakBars }}" as="bar" hint-placeholder-count="7">
+                  <div style="width:6px;height:{{ bar.h }}px;border-radius:3px;background:{{ bar.color }};"></div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- today's workout card -->
+            <div onClick="{{ goWorkout }}" style="background:oklch(0.19 0.006 240);border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:18px 20px;cursor:pointer;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:12px;letter-spacing:0.05em;text-transform:uppercase;color:oklch(0.68 0.01 240);">Today</div>
+                <sc-if value="{{ workoutDone }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:11px;font-weight:700;color:oklch(0.14 0.004 240);background:oklch(0.78 0.11 142);padding:3px 9px;border-radius:100px;">LOGGED</div>
+                </sc-if>
+              </div>
+              <div style="font-size:20px;font-weight:700;margin-bottom:4px;">{{ doneCount }} of {{ totalExercises }} moves logged</div>
+              <div style="font-size:13px;color:oklch(0.68 0.01 240);">Freeform — tap to open your library</div>
+            </div>
+
+            <!-- crew snapshot -->
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:10px;">Who's trained today</div>
+              <div style="display:flex;gap:10px;">
+                <sc-for list="{{ members }}" as="m" hint-placeholder-count="4">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:oklch(0.24 0.008 240);border:1.5px solid {{ m.ringColor }};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:{{ m.textColor }};">{{ m.initials }}</div>
+                    <div style="font-size:11px;color:oklch(0.68 0.01 240);">{{ m.name }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- friends teaser -->
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:15px;font-weight:700;">Crew activity</div>
+                <div onClick="{{ goFriends }}" style="font-size:13px;color:oklch(0.78 0.11 142);cursor:pointer;">See all</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:1px;background:oklch(0.19 0.006 240);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+                <sc-for list="{{ feedPreview }}" as="f" hint-placeholder-count="3">
+                  <div style="padding:12px 14px;display:flex;gap:10px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <div style="width:30px;height:30px;border-radius:50%;background:oklch(0.24 0.008 240);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:{{ f.textColor }};">{{ f.initials }}</div>
+                    <div style="flex:1;font-size:13px;color:oklch(0.85 0.003 240);"><span style="font-weight:700;">{{ f.name }}</span> {{ f.text }}</div>
+                    <div style="font-size:11px;color:oklch(0.5 0.01 240);flex-shrink:0;">{{ f.time }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== WORKOUT TAB ===== -->
+        <sc-if value="{{ isWorkout }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:wc-fade 0.25s ease;">
+
+            <!-- exercise detail overlay -->
+            <sc-if value="{{ hasExerciseOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div onClick="{{ closeExercise }}" style="display:flex;align-items:center;gap:6px;color:oklch(0.68 0.01 240);font-size:13px;cursor:pointer;margin-bottom:2px;">
+                  <svg width="8" height="13" viewBox="0 0 8 13"><path d="M7 1L1 6.5L7 12" stroke="oklch(0.68 0.01 240)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  Back to Pull Day
+                </div>
+                <div style="position:relative;width:100%;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:repeating-linear-gradient(45deg, oklch(0.24 0.008 240), oklch(0.24 0.008 240) 12px, oklch(0.19 0.006 240) 12px, oklch(0.19 0.006 240) 24px);display:flex;align-items:center;justify-content:center;">
+                  <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
+                    <svg width="20" height="22" viewBox="0 0 20 22"><polygon points="0,0 20,11 0,22" fill="oklch(0.96 0.003 240)"></polygon></svg>
+                  </div>
+                  <div style="position:absolute;bottom:10px;left:12px;font-family:ui-monospace,monospace;font-size:11px;color:oklch(0.68 0.01 240);">video · {{ selectedExercise.name }}</div>
+                </div>
+                <div>
+                  <div style="font-size:22px;font-weight:800;margin-bottom:4px;">{{ selectedExercise.name }}</div>
+                  <div style="font-size:13px;color:oklch(0.68 0.01 240);text-transform:uppercase;letter-spacing:0.04em;">{{ selectedExercise.muscle }}</div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <div style="flex:1;background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:20px;font-weight:800;">{{ selectedExercise.sets }}</div>
+                    <div style="font-size:11px;color:oklch(0.68 0.01 240);text-transform:uppercase;">Sets</div>
+                  </div>
+                  <div style="flex:1;background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                    <div style="font-size:20px;font-weight:800;">{{ selectedExercise.reps }}</div>
+                    <div style="font-size:11px;color:oklch(0.68 0.01 240);text-transform:uppercase;">Reps</div>
+                  </div>
+                </div>
+                <div style="background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);">
+                  <div style="font-size:12px;font-weight:700;color:oklch(0.78 0.11 142);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">Form cue</div>
+                  <div style="font-size:13px;line-height:1.5;color:oklch(0.85 0.003 240);">{{ selectedExercise.cue }}</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- exercise list -->
+            <sc-if value="{{ hasExerciseOpen }}" hint-placeholder-val="{{ false }}" invert="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                  <div style="font-size:22px;font-weight:800;margin-bottom:4px;">Exercise Library</div>
+                  <div style="font-size:13px;color:oklch(0.68 0.01 240);">Tap a move for its demo clip · check off what you did today</div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <sc-for list="{{ exercises }}" as="ex" hint-placeholder-count="5">
+                    <div onClick="{{ ex.open }}" style="display:flex;align-items:center;gap:12px;background:oklch(0.19 0.006 240);border-radius:14px;padding:10px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;">
+                      <div style="width:64px;height:52px;border-radius:10px;flex-shrink:0;background:repeating-linear-gradient(45deg, oklch(0.26 0.01 240), oklch(0.26 0.01 240) 6px, oklch(0.21 0.008 240) 6px, oklch(0.21 0.008 240) 12px);display:flex;align-items:center;justify-content:center;">
+                        <svg width="12" height="14" viewBox="0 0 12 14"><polygon points="0,0 12,7 0,14" fill="oklch(0.9 0.02 142)"></polygon></svg>
+                      </div>
+                      <div style="flex:1;">
+                        <div style="font-size:15px;font-weight:700;margin-bottom:2px;">{{ ex.name }}</div>
+                        <div style="font-size:12px;color:oklch(0.68 0.01 240);">demo clip · {{ ex.muscle }}</div>
+                      </div>
+                      <div onClick="{{ ex.toggle }}" style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:{{ ex.doneBg }};border:1.5px solid {{ ex.doneBorder }};display:flex;align-items:center;justify-content:center;">
+                        <svg width="12" height="10" viewBox="0 0 12 10"><path d="M1 5l3.5 3.5L11 1" stroke="{{ ex.checkColor }}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div onClick="{{ openLog }}" style="margin-top:6px;text-align:center;padding:15px;border-radius:100px;background:{{ logButtonBg }};color:{{ logButtonText }};font-size:15px;font-weight:700;cursor:pointer;">{{ logButtonLabel }}</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ===== PROGRESS TAB ===== -->
+        <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:wc-fade 0.25s ease;display:flex;flex-direction:column;gap:20px;">
+
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:10px;">Streak calendar</div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">
+                <sc-for list="{{ calendarDays }}" as="day" hint-placeholder-count="28">
+                  <div style="aspect-ratio:1;border-radius:8px;background:{{ day.bg }};border:{{ day.borderStyle }};display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+                    <div style="font-size:9px;color:{{ day.textColor }};">{{ day.dateNum }}</div>
+                    <sc-if value="{{ day.youDid }}" hint-placeholder-val="{{ false }}">
+                      <div style="width:4px;height:4px;border-radius:50%;background:oklch(0.14 0.004 240);position:absolute;bottom:3px;"></div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:15px;font-weight:700;">Progress photos</div>
+                <div onClick="{{ openPhotoModal }}" style="width:30px;height:30px;border-radius:50%;background:oklch(0.78 0.11 142);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                  <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 0v13M0 6.5h13" stroke="oklch(0.14 0.004 240)" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                <sc-for list="{{ progressPhotos }}" as="p" hint-placeholder-count="9">
+                  <div style="position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(45deg, oklch(0.24 0.008 240), oklch(0.24 0.008 240) 8px, oklch(0.19 0.006 240) 8px, oklch(0.19 0.006 240) 16px);">
+                    <div style="position:absolute;top:6px;left:6px;width:18px;height:18px;border-radius:50%;background:oklch(0.14 0.004 240 / 0.7);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:{{ p.textColor }};">{{ p.initials }}</div>
+                    <div style="position:absolute;bottom:6px;left:6px;font-size:9px;font-family:ui-monospace,monospace;color:oklch(0.68 0.01 240);">{{ p.date }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== FRIENDS TAB ===== -->
+        <sc-if value="{{ isFriends }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:wc-fade 0.25s ease;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Crew activity</div>
+            <sc-if value="{{ hasNudge }}" hint-placeholder-val="{{ true }}">
+              <div style="background:oklch(0.28 0.05 142);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+                <div style="font-size:13px;line-height:1.4;color:oklch(0.94 0.02 142);">{{ nudgeText }}</div>
+                <div onClick="{{ sendNudge }}" style="flex-shrink:0;font-size:12px;font-weight:700;background:oklch(0.14 0.004 240 / 0.35);padding:8px 12px;border-radius:100px;cursor:pointer;color:oklch(0.96 0.06 142);">{{ nudgeButtonLabel }}</div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ friendsFeed }}" as="f" hint-placeholder-count="6">
+              <div style="display:flex;gap:12px;align-items:flex-start;background:oklch(0.19 0.006 240);border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="width:36px;height:36px;border-radius:50%;background:oklch(0.24 0.008 240);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:{{ f.textColor }};">{{ f.initials }}</div>
+                <div style="flex:1;">
+                  <div style="font-size:13px;line-height:1.4;"><span style="font-weight:700;">{{ f.name }}</span> {{ f.text }}</div>
+                  <div style="font-size:11px;color:oklch(0.5 0.01 240);margin-top:3px;">{{ f.time }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ===== PROFILE TAB ===== -->
+        <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+          <div style="animation:wc-fade 0.25s ease;display:flex;flex-direction:column;gap:18px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0;">
+              <div style="width:72px;height:72px;border-radius:50%;background:oklch(0.24 0.008 240);border:2px solid oklch(0.78 0.11 142);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:oklch(0.78 0.11 142);">YO</div>
+              <div style="font-size:18px;font-weight:700;">You</div>
+              <div style="font-size:13px;color:oklch(0.68 0.01 240);">{{ groupName }} · {{ memberCount }} members</div>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:20px;font-weight:800;color:oklch(0.78 0.11 142);">{{ streakCount }}</div>
+                <div style="font-size:11px;color:oklch(0.68 0.01 240);">day streak</div>
+              </div>
+              <div style="flex:1;background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:20px;font-weight:800;">{{ totalWorkouts }}</div>
+                <div style="font-size:11px;color:oklch(0.68 0.01 240);">workouts</div>
+              </div>
+              <div style="flex:1;background:oklch(0.19 0.006 240);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:20px;font-weight:800;">{{ totalPhotos }}</div>
+                <div style="font-size:11px;color:oklch(0.68 0.01 240);">photos</div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;background:oklch(0.19 0.006 240);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+              <sc-for list="{{ settingsRows }}" as="row" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                  <div style="font-size:14px;">{{ row.label }}</div>
+                  <svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="oklch(0.5 0.01 240)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="text-align:center;font-size:12px;color:oklch(0.45 0.01 240);padding:8px 0;">This app is private to your crew — not published on the App Store.</div>
+          </div>
+        </sc-if>
+
+      </div>
+
+      <!-- BOTTOM TAB BAR -->
+      <div style="flex-shrink:0;display:flex;padding:10px 12px 26px;background:oklch(0.12 0.004 240);border-top:1px solid rgba(255,255,255,0.08);">
+        <div onClick="{{ goHome }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <div style="width:20px;height:20px;border-radius:5px;border:2px solid {{ tabColors.home }};box-sizing:border-box;"></div>
+          <div style="font-size:10px;color:{{ tabColors.home }};font-weight:600;">Home</div>
+        </div>
+        <div onClick="{{ goWorkout }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <div style="width:22px;height:10px;display:flex;align-items:center;justify-content:center;gap:2px;">
+            <div style="width:5px;height:10px;border-radius:2px;background:{{ tabColors.workout }};"></div>
+            <div style="width:8px;height:3px;background:{{ tabColors.workout }};"></div>
+            <div style="width:5px;height:10px;border-radius:2px;background:{{ tabColors.workout }};"></div>
+          </div>
+          <div style="font-size:10px;color:{{ tabColors.workout }};font-weight:600;">Workout</div>
+        </div>
+        <div onClick="{{ goProgress }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <div style="width:20px;height:14px;display:flex;align-items:flex-end;gap:2px;">
+            <div style="width:4px;height:6px;background:{{ tabColors.progress }};border-radius:1px;"></div>
+            <div style="width:4px;height:10px;background:{{ tabColors.progress }};border-radius:1px;"></div>
+            <div style="width:4px;height:14px;background:{{ tabColors.progress }};border-radius:1px;"></div>
+          </div>
+          <div style="font-size:10px;color:{{ tabColors.progress }};font-weight:600;">Progress</div>
+        </div>
+        <div onClick="{{ goFriends }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <div style="width:22px;height:14px;position:relative;">
+            <div style="width:11px;height:11px;border-radius:50%;border:2px solid {{ tabColors.friends }};position:absolute;left:0;top:1px;box-sizing:border-box;"></div>
+            <div style="width:11px;height:11px;border-radius:50%;border:2px solid {{ tabColors.friends }};position:absolute;left:9px;top:1px;box-sizing:border-box;background:oklch(0.12 0.004 240);"></div>
+          </div>
+          <div style="font-size:10px;color:{{ tabColors.friends }};font-weight:600;">Crew</div>
+        </div>
+        <div onClick="{{ goProfile }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <div style="width:20px;height:20px;position:relative;">
+            <div style="width:8px;height:8px;border-radius:50%;border:2px solid {{ tabColors.profile }};position:absolute;left:6px;top:0;box-sizing:border-box;"></div>
+            <div style="width:16px;height:9px;border-radius:8px 8px 0 0;border:2px solid {{ tabColors.profile }};border-bottom:none;position:absolute;left:2px;top:9px;box-sizing:border-box;"></div>
+          </div>
+          <div style="font-size:10px;color:{{ tabColors.profile }};font-weight:600;">You</div>
+        </div>
+      </div>
+
+      <!-- LOG MODAL -->
+      <sc-if value="{{ showLogModal }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;z-index:70;">
+          <div style="width:100%;background:oklch(0.17 0.005 240);border-radius:24px 24px 0 0;padding:24px 22px 40px;display:flex;flex-direction:column;gap:14px;">
+            <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 6px;"></div>
+            <div style="font-size:19px;font-weight:800;text-align:center;">Log today's session?</div>
+            <div style="font-size:13px;color:oklch(0.68 0.01 240);text-align:center;line-height:1.5;">{{ doneCount }} moves checked off. This adds today to the crew calendar — add a progress photo after.</div>
+            <div onClick="{{ confirmLog }}" style="text-align:center;padding:15px;border-radius:100px;background:oklch(0.78 0.11 142);color:oklch(0.14 0.004 240);font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Confirm workout logged</div>
+            <div onClick="{{ closeLog }}" style="text-align:center;padding:13px;font-size:14px;color:oklch(0.68 0.01 240);cursor:pointer;">Cancel</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- PHOTO MODAL -->
+      <sc-if value="{{ showPhotoModal }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;z-index:70;">
+          <div style="width:100%;background:oklch(0.17 0.005 240);border-radius:24px 24px 0 0;padding:24px 22px 40px;display:flex;flex-direction:column;gap:14px;">
+            <div style="width:36px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 6px;"></div>
+            <div style="font-size:19px;font-weight:800;text-align:center;">Add progress photo</div>
+            <div style="aspect-ratio:4/3;border-radius:16px;background:repeating-linear-gradient(45deg, oklch(0.26 0.01 240), oklch(0.26 0.01 240) 10px, oklch(0.21 0.008 240) 10px, oklch(0.21 0.008 240) 20px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-size:12px;color:oklch(0.68 0.01 240);">tap to take / choose photo</div>
+            <div onClick="{{ closePhotoModal }}" style="text-align:center;padding:15px;border-radius:100px;background:oklch(0.78 0.11 142);color:oklch(0.14 0.004 240);font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;">Save to today's log</div>
+            <div onClick="{{ closePhotoModal }}" style="text-align:center;padding:13px;font-size:14px;color:oklch(0.68 0.01 240);cursor:pointer;">Cancel</div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </x-import>
+</div>
+]]>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+<![CDATA[
+const TEA = 'oklch(0.78 0.11 142)';
+const DIM = 'oklch(0.5 0.01 240)';
+
+const MEMBERS_RAW = [
+  { name: 'You', initials: 'YO', ring: TEA, tc: TEA },
+  { name: 'Sam', initials: 'SA', ring: 'oklch(0.5 0.01 240)', tc: 'oklch(0.85 0.003 240)' },
+  { name: 'Jess', initials: 'JE', ring: 'oklch(0.5 0.01 240)', tc: 'oklch(0.85 0.003 240)' },
+  { name: 'Marco', initials: 'MA', ring: 'oklch(0.5 0.01 240)', tc: 'oklch(0.85 0.003 240)' },
+];
+
+const EXERCISES_RAW = [
+  { id: 1, name: 'Bent-Over Rows', sets: 4, reps: 10, muscle: 'Back', cue: 'Keep spine neutral, drive elbows back and squeeze shoulder blades at the top.' },
+  { id: 2, name: 'Lat Pulldown', sets: 3, reps: 12, muscle: 'Back', cue: 'Lead with your elbows, avoid leaning back to cheat the weight down.' },
+  { id: 3, name: 'Face Pulls', sets: 3, reps: 15, muscle: 'Rear delts', cue: 'Pull to eye level, rotate shoulders externally at the finish.' },
+  { id: 4, name: 'Bicep Curls', sets: 3, reps: 12, muscle: 'Biceps', cue: 'Keep elbows pinned to your sides, control the lowering phase.' },
+  { id: 5, name: 'Hammer Curls', sets: 3, reps: 12, muscle: 'Biceps', cue: 'Neutral grip, avoid swinging — let the forearm do the work.' },
+];
+
+const WEEK_RAW = [
+  { day: 'Mon', short: 'Push' },
+  { day: 'Tue', short: 'Rest' },
+  { day: 'Wed', short: 'Pull' },
+  { day: 'Thu', short: 'Rest' },
+  { day: 'Fri', short: 'Legs' },
+  { day: 'Sat', short: 'Full' },
+  { day: 'Sun', short: 'Rest' },
+];
+const TODAY_IDX = 2;
+
+const FEED_RAW = [
+  { name: 'Sam', initials: 'SA', text: 'completed Push Day', time: '2h ago' },
+  { name: 'Jess', initials: 'JE', text: 'added a progress photo', time: '5h ago' },
+  { name: 'Marco', initials: 'MA', text: 'hit a 7-day streak', time: 'yesterday' },
+  { name: 'You', initials: 'YO', text: 'completed Pull Day', time: 'yesterday' },
+  { name: 'Sam', initials: 'SA', text: 'completed Leg Day', time: '2 days ago' },
+  { name: 'Jess', initials: 'JE', text: 'completed Full Body', time: '3 days ago' },
+];
+
+// 28-day calendar, Mon-start, today = index 19
+const CAL_RAW = [1,3,2,0,4,1,0, 2,4,3,1,2,0,3, 4,1,2,3,0,2,4, 1,3,0,2,4,1,0].map((count, i) => ({
+  dateNum: i + 1,
+  youDid: [0,2,4,5,9,11,12,14,16,19,21,23,26].indexOf(i) !== -1,
+  count,
+  isToday: i === 19,
+}));
+
+const PHOTOS_RAW = [
+  { date: 'Aug 6', initials: 'YO', tc: TEA },
+  { date: 'Aug 4', initials: 'SA', tc: 'oklch(0.85 0.003 240)' },
+  { date: 'Aug 3', initials: 'YO', tc: TEA },
+  { date: 'Jul 30', initials: 'JE', tc: 'oklch(0.85 0.003 240)' },
+  { date: 'Jul 28', initials: 'YO', tc: TEA },
+  { date: 'Jul 25', initials: 'MA', tc: 'oklch(0.85 0.003 240)' },
+  { date: 'Jul 22', initials: 'YO', tc: TEA },
+  { date: 'Jul 18', initials: 'SA', tc: 'oklch(0.85 0.003 240)' },
+  { date: 'Jul 15', initials: 'YO', tc: TEA },
+];
+
+class Component extends DCLogic {
+  state = {
+    tab: 'home',
+    exerciseId: null,
+    showLogModal: false,
+    showPhotoModal: false,
+    workoutDone: false,
+    doneIds: [],
+    nudgeSent: false,
+  };
+
+  toggleDone(id) {
+    this.setState(s => ({
+      doneIds: s.doneIds.includes(id) ? s.doneIds.filter(x => x !== id) : [...s.doneIds, id],
+    }));
+  }
+
+  setTab(t) { this.setState({ tab: t, exerciseId: null }); }
+
+  renderVals() {
+    const tab = this.state.tab;
+    const inactiveColor = DIM;
+
+    const tabTitles = { home: 'Home', workout: 'Pull Day', progress: 'Progress', friends: 'Crew', profile: 'Profile' };
+
+    const members = MEMBERS_RAW.map(m => ({ name: m.name, initials: m.initials, ringColor: m.ring, textColor: m.tc }));
+
+    const doneIds = this.state.doneIds;
+    const exercises = EXERCISES_RAW.map(e => {
+      const done = doneIds.includes(e.id);
+      return {
+        id: e.id,
+        name: e.name,
+        setsReps: e.sets + ' × ' + e.reps,
+        muscle: e.muscle,
+        sets: e.sets,
+        reps: e.reps,
+        cue: e.cue,
+        open: () => this.setState({ exerciseId: e.id }),
+        toggle: (ev) => { if (ev && ev.stopPropagation) ev.stopPropagation(); this.toggleDone(e.id); },
+        doneBg: done ? TEA : 'transparent',
+        doneBorder: done ? TEA : 'rgba(255,255,255,0.2)',
+        checkColor: done ? 'oklch(0.14 0.004 240)' : 'rgba(255,255,255,0.2)',
+      };
+    });
+    const doneCount = doneIds.length;
+    const totalExercises = EXERCISES_RAW.length;
+
+    const selectedRaw = EXERCISES_RAW.find(e => e.id === this.state.exerciseId);
+    const selectedExercise = selectedRaw ? {
+      name: selectedRaw.name, muscle: selectedRaw.muscle, sets: selectedRaw.sets, reps: selectedRaw.reps, cue: selectedRaw.cue,
+    } : { name: '', muscle: '', sets: '', reps: '', cue: '' };
+
+    const calendarDays = CAL_RAW.map((d, i) => {
+      const intensity = d.count / 4;
+      const bg = d.isToday
+        ? 'oklch(0.78 0.11 142 / 0.9)'
+        : d.count === 0
+          ? 'oklch(0.19 0.006 240)'
+          : `oklch(${0.3 + intensity * 0.3} 0.07 142)`;
+      return {
+        key: i,
+        dateNum: d.dateNum,
+        youDid: d.youDid,
+        bg,
+        borderStyle: d.isToday ? '1.5px solid oklch(0.96 0.003 240)' : '1px solid rgba(255,255,255,0.05)',
+        textColor: d.isToday ? 'oklch(0.14 0.004 240)' : d.count > 2 ? 'oklch(0.14 0.004 240)' : DIM,
+      };
+    });
+
+    const progressPhotos = PHOTOS_RAW.map((p, i) => ({ key: i, date: p.date, initials: p.initials, textColor: p.tc }));
+    const friendsFeed = FEED_RAW.map((f, i) => ({ key: i, name: f.name, initials: f.initials, text: f.text, time: f.time, textColor: f.name === 'You' ? TEA : 'oklch(0.85 0.003 240)' }));
+    const feedPreview = friendsFeed.slice(0, 3);
+
+    const streakBars = [4, 6, 8, 10, 14, 12, 16].map((h, i) => ({ h, color: i === 6 ? TEA : 'oklch(0.5 0.09 142)' }));
+
+    return {
+      isHome: tab === 'home', isWorkout: tab === 'workout', isProgress: tab === 'progress', isFriends: tab === 'friends', isProfile: tab === 'profile',
+      groupName: 'The Crew', headerTitle: tabTitles[tab],
+      goHome: () => this.setTab('home'), goWorkout: () => this.setTab('workout'), goProgress: () => this.setTab('progress'), goFriends: () => this.setTab('friends'), goProfile: () => this.setTab('profile'),
+      tabColors: {
+        home: tab === 'home' ? TEA : inactiveColor,
+        workout: tab === 'workout' ? TEA : inactiveColor,
+        progress: tab === 'progress' ? TEA : inactiveColor,
+        friends: tab === 'friends' ? TEA : inactiveColor,
+        profile: tab === 'profile' ? TEA : inactiveColor,
+      },
+      streakCount: 12, streakBars,
+      workoutDone: this.state.workoutDone,
+      doneCount, totalExercises,
+      members, feedPreview,
+      hasExerciseOpen: !!this.state.exerciseId,
+      selectedExercise,
+      closeExercise: () => this.setState({ exerciseId: null }),
+      exercises,
+      logButtonLabel: this.state.workoutDone ? 'Session logged' : 'Log today\'s session',
+      logButtonBg: this.state.workoutDone ? 'oklch(0.24 0.008 240)' : TEA,
+      logButtonText: this.state.workoutDone ? 'oklch(0.68 0.01 240)' : 'oklch(0.14 0.004 240)',
+      showLogModal: this.state.showLogModal,
+      hasNudge: true,
+      nudgeText: this.state.nudgeSent ? 'Nudge sent to Marco — accountability squad activated.' : 'Marco hasn\u2019t logged a session in 2 days.',
+      nudgeButtonLabel: this.state.nudgeSent ? 'Sent' : 'Send nudge',
+      sendNudge: () => this.setState({ nudgeSent: true }),
+      openLog: () => this.setState({ showLogModal: true }),
+      closeLog: () => this.setState({ showLogModal: false }),
+      confirmLog: () => this.setState({ showLogModal: false, workoutDone: true }),
+      calendarDays,
+      progressPhotos,
+      showPhotoModal: this.state.showPhotoModal,
+      openPhotoModal: () => this.setState({ showPhotoModal: true }),
+      closePhotoModal: () => this.setState({ showPhotoModal: false }),
+      friendsFeed,
+      memberCount: 4,
+      totalWorkouts: 47, totalPhotos: 23,
+      settingsRows: [
+        { label: 'Group settings' }, { label: 'Invite a friend' }, { label: 'Notifications' }, { label: 'About this app' },
+      ],
+    };
+  }
+}
+]]>
+</script>
+</body>
+</html>
