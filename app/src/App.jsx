@@ -4,6 +4,7 @@ import * as api from './lib/api.js';
 import { isoDay } from './lib/theme.js';
 import { parseWorkbookFile } from './lib/xlsxImport.js';
 
+import SignInScreen from './screens/SignInScreen.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import WorkoutsScreen from './screens/WorkoutsScreen.jsx';
@@ -14,12 +15,16 @@ import WorkoutBuilderSheet from './components/WorkoutBuilderSheet.jsx';
 import LogSheet from './components/LogSheet.jsx';
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
   const [profile, setProfile] = useState(null);
   const [group, setGroup] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState(null);
+
+  const userId = session?.user?.id || null;
 
   const [tab, setTab] = useState('home');
   const [workouts, setWorkouts] = useState([]);
@@ -70,17 +75,29 @@ export default function App() {
   }, [loadSocialData, loadAvatars]);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setSessionChecked(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!sessionChecked) return; // still checking for an existing session
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     (async () => {
+      setLoading(true);
       try {
-        const session = await api.ensureSession();
-        const uid = session.user.id;
-        setUserId(uid);
-        const p = await api.fetchProfile(uid);
+        const p = await api.fetchProfile(userId);
         setProfile(p);
         if (p) {
-          const g = await api.fetchMyGroup(uid);
+          const g = await api.fetchMyGroup(userId);
           setGroup(g);
-          if (g) await loadAppData(g, uid);
+          if (g) await loadAppData(g, userId);
         }
       } catch (err) {
         console.error(err);
@@ -89,7 +106,20 @@ export default function App() {
         setLoading(false);
       }
     })();
-  }, [loadAppData]);
+  }, [sessionChecked, userId, loadAppData]);
+
+  const handleSendMagicLink = async (email) => {
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      await api.sendMagicLink(email);
+      setMagicLinkSentTo(email);
+    } catch (err) {
+      setAuthError(err.message || 'Could not send the link.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   const handleSignIn = async ({ name, group: groupInput, mode }) => {
     setAuthBusy(true);
@@ -110,7 +140,6 @@ export default function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    setUserId(null);
     setProfile(null);
     setGroup(null);
     setWorkouts([]);
@@ -122,13 +151,6 @@ export default function App() {
     setMembers([]);
     setAvatarByUser({});
     setTab('home');
-    setLoading(true);
-    try {
-      const session = await api.ensureSession();
-      setUserId(session.user.id);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const refresh = () => loadAppData(group, userId);
@@ -261,8 +283,16 @@ export default function App() {
     await loadAvatars(members);
   };
 
-  if (loading) {
+  if (!sessionChecked || loading) {
     return <div style={{ minHeight: '100vh', background: '#0A0A0A' }} />;
+  }
+
+  if (!session) {
+    return (
+      <div style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', minHeight: '100vh' }}>
+        <SignInScreen onSendLink={handleSendMagicLink} error={authError} busy={authBusy} sentTo={magicLinkSentTo} />
+      </div>
+    );
   }
 
   if (!profile || !group) {
