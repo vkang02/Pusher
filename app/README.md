@@ -1,4 +1,4 @@
-# Iron Circle — Workout MVP
+# Werk Betch — Workout MVP
 
 React + Vite implementation of `project/Workout MVP.dc.html`, backed by a real
 shared Supabase project (Postgres + anonymous auth) instead of the original

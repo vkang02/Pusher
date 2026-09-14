@@ -23,7 +23,7 @@ export default function SignInScreen({ onSendLink, error, busy, sentTo }) {
       <div style={{ width: 52, height: 52, borderRadius: 16, background: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
         <svg width="26" height="26" viewBox="0 0 24 24"><path d="M4 9v6M20 9v6M2 10v4M22 10v4M7 12h10" stroke="#0A0A0A" strokeWidth="2" fill="none" strokeLinecap="round" /></svg>
       </div>
-      <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Iron Circle</div>
+      <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Werk Betch</div>
       <div style={{ fontSize: 15, color: colors.textDim55, lineHeight: 1.5, marginBottom: 28 }}>Log workouts with your crew. No app store, just a link.</div>
 
       <div style={{ fontSize: 12, color: colors.textDim5, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>Your email</div>
