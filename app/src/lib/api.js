@@ -5,11 +5,17 @@ const PHOTO_BUCKET = 'log-photos';
 const AVATAR_BUCKET = 'avatars';
 const AVATAR_URL_TTL = 3600 * 24 * 7; // avatars change rarely but render often; a week cuts re-signing traffic
 
-export async function sendMagicLink(email) {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin },
-  });
+export async function sendSignInCode(email) {
+  // No emailRedirectTo: the email's link is a fallback for regular browser use,
+  // but the code (typed back in below) is what actually completes sign-in — it
+  // works from inside an iOS home-screen app, where a clicked link would open
+  // Safari instead and land the session in the wrong, unshared storage.
+  const { error } = await supabase.auth.signInWithOtp({ email });
+  if (error) throw error;
+}
+
+export async function verifySignInCode(email, code) {
+  const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
   if (error) throw error;
 }
 

@@ -108,14 +108,27 @@ export default function App() {
     })();
   }, [sessionChecked, userId, loadAppData]);
 
-  const handleSendMagicLink = async (email) => {
+  const handleSendCode = async (email) => {
     setAuthBusy(true);
     setAuthError(null);
     try {
-      await api.sendMagicLink(email);
+      await api.sendSignInCode(email);
       setMagicLinkSentTo(email);
     } catch (err) {
-      setAuthError(err.message || 'Could not send the link.');
+      setAuthError(err.message || 'Could not send the code.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleVerifyCode = async (email, code) => {
+    setAuthBusy(true);
+    setAuthError(null);
+    try {
+      await api.verifySignInCode(email, code);
+      // onAuthStateChange picks up the new session from here.
+    } catch (err) {
+      setAuthError(err.message || 'That code is invalid or expired.');
     } finally {
       setAuthBusy(false);
     }
@@ -290,7 +303,14 @@ export default function App() {
   if (!session) {
     return (
       <div style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', minHeight: '100vh' }}>
-        <SignInScreen onSendLink={handleSendMagicLink} error={authError} busy={authBusy} sentTo={magicLinkSentTo} />
+        <SignInScreen
+          onSendCode={handleSendCode}
+          onVerifyCode={handleVerifyCode}
+          onResend={handleSendCode}
+          error={authError}
+          busy={authBusy}
+          sentTo={magicLinkSentTo}
+        />
       </div>
     );
   }
