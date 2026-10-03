@@ -6,7 +6,7 @@ function buildInitialExercises(workout, existingLog, prevLog) {
   return JSON.parse(JSON.stringify(base)).map((ex) => {
     if (!existingLog && prevLog) {
       const prev = prevLog.exercises.find((p) => p.id === ex.id || p.name === ex.name);
-      if (prev) return { ...ex, sets: [...prev.sets] };
+      if (prev) return { ...ex, sets: [...prev.sets], weight: prev.weight || ex.weight || '' };
     }
     return ex;
   });
@@ -28,6 +28,10 @@ export default function LogSheet({
   const title = existingLog ? existingLog.title : workout.title;
   const description = existingLog ? existingLog.description : workout.description;
   const prefillNote = !existingLog && prevLog ? `Sets and reps carried over from ${shortDate(prevLog.log_date)} — edit anything you changed today.` : null;
+
+  const setWeight = (i, val) => {
+    setExercises((prev) => prev.map((ex, idx) => (idx === i ? { ...ex, weight: val } : ex)));
+  };
 
   const setValue = (i, j, val) => {
     setExercises((prev) => {
@@ -104,13 +108,18 @@ export default function LogSheet({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 15.5, fontWeight: 700 }}>{ex.name}</div>
-                  {prev && (
-                    <div style={{ fontSize: 11.5, color: colors.textDim45, marginTop: 2 }}>
-                      Last: {prev.sets.map((v) => v || '–').join(' / ')}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 11.5, color: colors.textDim45, marginTop: 2 }}>
+                    {ex.sets.length} sets
+                    {prev && ` · Last: ${prev.sets.map((v) => v || '–').join(' / ')}${prev.weight ? ` @ ${prev.weight}` : ''}`}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12.5, color: colors.textDim5, flexShrink: 0 }}>{ex.sets.length} sets</div>
+                {(!readOnly || ex.weight) && (
+                  <input
+                    type="text" value={ex.weight || ''} placeholder="Weight" disabled={readOnly}
+                    onChange={(e) => setWeight(i, e.target.value)}
+                    style={{ width: 92, flexShrink: 0, boxSizing: 'border-box', textAlign: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: readOnly ? colors.textDim7 : colors.text, fontSize: 13.5, padding: '8px 6px' }}
+                  />
+                )}
               </div>
               <div style={{ display: 'flex', gap: 7 }}>
                 {ex.sets.map((v, j) => (

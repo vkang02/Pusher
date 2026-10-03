@@ -37,6 +37,13 @@ function repsToSets(repsRaw, setCount) {
     parts = parts[0].split('-');
   }
   if (parts.length > 1) return parts.slice(0, 6);
+
+  // "10-12-14 each side" with 3 sets is a pyramid with a shared suffix.
+  const withSuffix = raw.match(/^(\d+(?:-\d+){2,})\s+(.+)$/);
+  if (withSuffix) {
+    const nums = withSuffix[1].split('-');
+    if (nums.length === setCount) return nums.map((n) => `${n} ${withSuffix[2]}`);
+  }
   return Array.from({ length: setCount }, () => raw);
 }
 
@@ -48,7 +55,7 @@ export function parseWorkbookFile(file) {
         const wb = XLSX.read(evt.target.result, { type: 'binary' });
         const imported = [];
         wb.SheetNames.forEach((sheetName) => {
-          const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+          const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '', raw: false });
           const headerRowIdx = findHeaderRowIndex(grid);
           if (headerRowIdx === -1) return;
 
@@ -70,9 +77,8 @@ export function parseWorkbookFile(file) {
               const setCount = Math.min(Math.max(parseInt(get(...SETS_KEYS), 10) || 3, 1), 6);
               const sets = repsToSets(get(...REPS_KEYS), setCount);
               const weight = get(...WEIGHT_KEYS);
-              const displayName = weight && weight !== '-' ? `${name} — ${weight}` : name;
               const notes = get(...NOTES_KEYS);
-              return { id: uid('e'), name: displayName, sets, notes };
+              return { id: uid('e'), name, sets, weight: weight && weight !== '-' ? weight : '', notes };
             })
             .filter(Boolean);
 

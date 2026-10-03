@@ -4,7 +4,7 @@ import { colors, uid } from '../lib/theme.js';
 function cloneWorkout(w) {
   return w
     ? JSON.parse(JSON.stringify(w))
-    : { id: null, title: '', description: '', exercises: [{ id: uid('e'), name: '', sets: ['', '', ''], notes: '' }] };
+    : { id: null, title: '', description: '', exercises: [{ id: uid('e'), name: '', sets: ['', '', ''], weight: '', notes: '' }] };
 }
 
 export default function WorkoutBuilderSheet({ workout, onClose, onSave, onDelete, busy }) {
@@ -46,6 +46,11 @@ export default function WorkoutBuilderSheet({ workout, onClose, onSave, onDelete
                 type="text" value={ex.name} placeholder="Exercise name"
                 onChange={(e) => { const v = e.target.value; patch((d) => { d.exercises[i].name = v; }); }}
                 style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: colors.text, fontSize: 15, fontWeight: 600, padding: '10px 11px' }}
+              />
+              <input
+                type="text" value={ex.weight || ''} placeholder="Weight"
+                onChange={(e) => { const v = e.target.value; patch((d) => { d.exercises[i].weight = v; }); }}
+                style={{ width: 84, flexShrink: 0, boxSizing: 'border-box', textAlign: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: colors.text, fontSize: 13.5, padding: '11px 6px' }}
               />
               <button
                 onClick={() => patch((d) => { d.exercises.splice(i, 1); })}
@@ -89,7 +94,7 @@ export default function WorkoutBuilderSheet({ workout, onClose, onSave, onDelete
         ))}
 
         <button
-          onClick={() => patch((d) => { d.exercises.push({ id: uid('e'), name: '', sets: ['', '', ''], notes: '' }); })}
+          onClick={() => patch((d) => { d.exercises.push({ id: uid('e'), name: '', sets: ['', '', ''], weight: '', notes: '' }); })}
           style={{ width: '100%', background: 'none', border: '1px dashed rgba(207,234,192,0.4)', color: colors.accent, borderRadius: 12, padding: 12, fontSize: 13.5, fontWeight: 600, marginBottom: 20 }}
         >+ Add exercise</button>
       </div>
@@ -108,7 +113,7 @@ export default function WorkoutBuilderSheet({ workout, onClose, onSave, onDelete
               description: draft.description.trim(),
               exercises: draft.exercises
                 .filter((ex) => ex.name.trim())
-                .map((ex) => ({ ...ex, name: ex.name.trim(), notes: (ex.notes || '').trim() })),
+                .map((ex) => ({ ...ex, name: ex.name.trim(), weight: (ex.weight || '').trim(), notes: (ex.notes || '').trim() })),
             };
             onSave(cleaned, isExisting);
           }}
