@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabaseClient.js';
 import * as api from './lib/api.js';
 import { isoDay } from './lib/theme.js';
@@ -200,6 +200,34 @@ export default function App() {
 
   const refresh = () => loadAppData(group, userId);
 
+  const refreshRef = useRef(null);
+  refreshRef.current = () => (group ? loadAppData(group, userId).catch(console.error) : undefined);
+
+  useEffect(() => {
+    if (!group?.id || !userId) return undefined;
+    let timer;
+    const scheduleRefresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => refreshRef.current?.(), 400);
+    };
+
+    const channel = supabase.channel(`group-${group.id}`);
+    for (const table of ['workouts', 'logs', 'log_reactions', 'log_comments', 'log_photos', 'group_members']) {
+      channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `group_id=eq.${group.id}` }, scheduleRefresh);
+    }
+    channel.subscribe();
+
+    // Phones suspend background tabs and drop the socket, so catch up on return.
+    const onVisible = () => { if (document.visibilityState === 'visible') scheduleRefresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      supabase.removeChannel(channel);
+    };
+  }, [group?.id, userId]);
+
   const handleSaveWorkout = async (cleaned, isExisting) => {
     setBusy(true);
     try {
@@ -273,7 +301,13 @@ export default function App() {
   const handleSaveLog = async (entry) => {
     setBusy(true);
     try {
-      await api.saveLog(group.id, userId, logSheetCtx.dateKey, entry);
+      if (entry.isShared) {
+        // Shared fields sync cell-by-cell while editing; saving only needs the notes.
+        await api.saveLogNotes(logSheetCtx.existingLog.id, entry.notes);
+      } else {
+        const saved = await api.saveLog(group.id, userId, logSheetCtx.dateKey, entry);
+        if (entry.startSharing) await api.startSharingLog(saved.id);
+      }
       setLogSheetCtx(null);
       await refresh();
       setTab('home');
@@ -321,6 +355,18 @@ export default function App() {
   const handleDeleteComment = async (commentId) => {
     await api.deleteComment(commentId);
     await loadSocialData(groupLogs);
+  };
+
+  const handleJoinShared = async (log) => {
+    const row = await api.joinSharedLog(log.shared_session_id);
+    await refresh();
+    openExistingLog(row);
+  };
+
+  const handleStopSharing = async (logId) => {
+    await api.stopSharingLog(logId);
+    setLogSheetCtx(null);
+    await refresh();
   };
 
   const handleUploadAvatar = async (file) => {
@@ -388,6 +434,8 @@ export default function App() {
     isMine: l.user_id === userId,
     memberName: nameFor(l.user_id),
     avatarUrl: avatarByUser[l.user_id] || null,
+    isShared: !!l.shared_session_id,
+    canJoin: !!l.shared_session_id && l.user_id !== userId && !logs.some((m) => m.shared_session_id === l.shared_session_id),
     photos: logPhotos.filter((p) => p.log_id === l.id),
     reactions: logReactions.filter((r) => r.log_id === l.id),
     comments: logComments
@@ -411,6 +459,7 @@ export default function App() {
             onToggleReaction={handleToggleReaction}
             onAddComment={handleAddComment}
             onDeleteComment={handleDeleteComment}
+            onJoinShared={handleJoinShared}
           />
         )}
         {tab === 'workouts' && (
@@ -456,6 +505,7 @@ export default function App() {
         <LogSheet
           workout={logSheetCtx.workout}
           existingLog={logSheetCtx.existingLog}
+          liveLog={logSheetCtx.existingLog ? logs.find((l) => l.id === logSheetCtx.existingLog.id) || null : null}
           prevLog={logSheetCtx.prevLog}
           dateKey={logSheetCtx.dateKey}
           isNew={logSheetCtx.isNew}
@@ -469,6 +519,10 @@ export default function App() {
           onEnsureSaved={handleEnsureLogSaved}
           onUploadPhoto={handleUploadPhoto}
           onDeletePhoto={handleDeletePhoto}
+          onSyncCell={api.setSharedCell}
+          onSyncWeight={api.setSharedWeight}
+          onSyncDuration={api.setSharedDuration}
+          onStopSharing={handleStopSharing}
         />
       )}
     </div>

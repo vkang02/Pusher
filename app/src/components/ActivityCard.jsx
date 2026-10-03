@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PhotoViewer from './PhotoViewer.jsx';
 import { colors, REACTION_EMOJIS, dayShort, shortDate, summaryOf } from '../lib/theme.js';
 
-export default function ActivityCard({ log, photos, reactions, comments, myUserId, onOpenLog, onToggleReaction, onAddComment, onDeleteComment }) {
+export default function ActivityCard({ log, photos, reactions, comments, myUserId, onOpenLog, onToggleReaction, onAddComment, onDeleteComment, onJoinShared }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
@@ -45,6 +45,20 @@ export default function ActivityCard({ log, photos, reactions, comments, myUserI
         </div>
         <span style={{ fontSize: 18, color: colors.textDim3, flexShrink: 0 }}>›</span>
       </div>
+
+      {log.isShared && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: colors.accent, background: colors.accentSoft12, border: `1px solid ${colors.accentSoft3}`, borderRadius: 10, padding: '3px 9px' }}>Logged together</span>
+          {log.canJoin && (
+            <button
+              onClick={() => onJoinShared(log)}
+              style={{ fontSize: 12, fontWeight: 700, color: '#0A0A0A', background: colors.accent, border: 'none', borderRadius: 10, padding: '4px 11px' }}
+            >
+              Join this log
+            </button>
+          )}
+        </div>
+      )}
 
       {log.notes && (
         <div style={{ fontSize: 12.5, color: colors.textDim65, fontStyle: 'italic', marginTop: 10 }}>"{log.notes}"</div>

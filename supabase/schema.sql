@@ -397,3 +397,122 @@ $$;
 
 grant execute on function create_group(text) to authenticated;
 grant execute on function join_group(text) to authenticated;
+
+-- ── Realtime ────────────────────────────────────────────────────────
+
+
+do $$
+declare t text;
+begin
+  foreach t in array array['workouts','logs','log_reactions','log_comments','log_photos','group_members']
+  loop
+    execute format('alter table public.%I replica identity full', t);
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+-- ── Shared logs ─────────────────────────────────────────────────────
+
+-- Edits are applied one cell at a time, atomically, to every row in the
+-- session, so two people typing in different boxes never overwrite each other.
+
+alter table logs add column if not exists shared_session_id uuid;
+create index if not exists logs_shared_session_idx on logs (shared_session_id)
+  where shared_session_id is not null;
+
+create or replace function set_log_cell(p_log_id uuid, p_exercise_id text, p_set_index int, p_value text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_session uuid; v_group uuid;
+begin
+  select shared_session_id, group_id into v_session, v_group
+  from logs where id = p_log_id and user_id = auth.uid();
+  if not found then raise exception 'not your log'; end if;
+
+  perform 1 from logs
+  where id = p_log_id or (v_session is not null and shared_session_id = v_session and group_id = v_group)
+  order by id for update;
+
+  update logs l set
+    exercises = (
+      select jsonb_agg(
+        case when e.ex->>'id' = p_exercise_id
+             then jsonb_set(e.ex, array['sets', p_set_index::text], to_jsonb(p_value))
+             else e.ex end
+        order by e.ord)
+      from jsonb_array_elements(l.exercises) with ordinality as e(ex, ord)),
+    updated_at = now()
+  where l.id = p_log_id
+     or (v_session is not null and l.shared_session_id = v_session and l.group_id = v_group);
+end $$;
+
+create or replace function set_log_weight(p_log_id uuid, p_exercise_id text, p_value text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_session uuid; v_group uuid;
+begin
+  select shared_session_id, group_id into v_session, v_group
+  from logs where id = p_log_id and user_id = auth.uid();
+  if not found then raise exception 'not your log'; end if;
+
+  perform 1 from logs
+  where id = p_log_id or (v_session is not null and shared_session_id = v_session and group_id = v_group)
+  order by id for update;
+
+  update logs l set
+    exercises = (
+      select jsonb_agg(
+        case when e.ex->>'id' = p_exercise_id
+             then jsonb_set(e.ex, '{weight}', to_jsonb(p_value))
+             else e.ex end
+        order by e.ord)
+      from jsonb_array_elements(l.exercises) with ordinality as e(ex, ord)),
+    updated_at = now()
+  where l.id = p_log_id
+     or (v_session is not null and l.shared_session_id = v_session and l.group_id = v_group);
+end $$;
+
+create or replace function set_log_duration(p_log_id uuid, p_minutes int)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_session uuid; v_group uuid;
+begin
+  select shared_session_id, group_id into v_session, v_group
+  from logs where id = p_log_id and user_id = auth.uid();
+  if not found then raise exception 'not your log'; end if;
+
+  update logs l set duration_minutes = p_minutes, updated_at = now()
+  where l.id = p_log_id
+     or (v_session is not null and l.shared_session_id = v_session and l.group_id = v_group);
+end $$;
+
+-- Join someone's shared log: creates (or updates) your own log for that day
+-- with the same workout, sets, weights and duration. Your notes/photos stay yours.
+create or replace function join_shared_log(p_session uuid)
+returns logs language plpgsql security definer set search_path = public as $$
+declare v_src logs; v_row logs;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+
+  select * into v_src from logs where shared_session_id = p_session
+  order by updated_at desc limit 1;
+  if not found then raise exception 'shared log not found'; end if;
+  if not is_group_member(v_src.group_id) then raise exception 'not in this group'; end if;
+
+  insert into logs (group_id, workout_id, user_id, log_date, title, description, exercises, duration_minutes, shared_session_id)
+  values (v_src.group_id, v_src.workout_id, auth.uid(), v_src.log_date, v_src.title, v_src.description,
+          v_src.exercises, v_src.duration_minutes, p_session)
+  on conflict (user_id, log_date) do update set
+    workout_id = excluded.workout_id, title = excluded.title, description = excluded.description,
+    exercises = excluded.exercises, duration_minutes = excluded.duration_minutes,
+    shared_session_id = excluded.shared_session_id, updated_at = now()
+  returning * into v_row;
+  return v_row;
+end $$;
+
+grant execute on function set_log_cell(uuid, text, int, text) to authenticated;
+grant execute on function set_log_weight(uuid, text, text) to authenticated;
+grant execute on function set_log_duration(uuid, int) to authenticated;
+grant execute on function join_shared_log(uuid) to authenticated;

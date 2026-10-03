@@ -4,7 +4,7 @@ import ActivityCard from '../components/ActivityCard.jsx';
 
 export default function HomeScreen({
   userName, group, totalLogs, todayEntry, recentLogs, myUserId,
-  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment,
+  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment, onJoinShared,
 }) {
   return (
     <div style={{ padding: '58px 20px 20px' }}>
@@ -55,6 +55,7 @@ export default function HomeScreen({
             onToggleReaction={onToggleReaction}
             onAddComment={onAddComment}
             onDeleteComment={onDeleteComment}
+            onJoinShared={onJoinShared}
           />
         ))
       ) : (

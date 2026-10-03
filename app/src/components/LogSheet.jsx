@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PhotoViewer from './PhotoViewer.jsx';
 import { colors, longDate, shortDate } from '../lib/theme.js';
 
@@ -14,8 +14,9 @@ function buildInitialExercises(workout, existingLog, prevLog) {
 }
 
 export default function LogSheet({
-  workout, existingLog, prevLog, dateKey, isNew, readOnly, ownerName, photos,
+  workout, existingLog, liveLog, prevLog, dateKey, isNew, readOnly, ownerName, photos,
   onClose, onSave, onDelete, onEnsureSaved, onUploadPhoto, onDeletePhoto, busy,
+  onSyncCell, onSyncWeight, onSyncDuration, onStopSharing,
 }) {
   const [exercises, setExercises] = useState(() => buildInitialExercises(workout, existingLog, prevLog));
   const [durationMinutes, setDurationMinutes] = useState(existingLog?.duration_minutes ?? '');
@@ -26,6 +27,44 @@ export default function LogSheet({
   const [photoError, setPhotoError] = useState(null);
   const [viewerIndex, setViewerIndex] = useState(null);
   const fileInputRef = useRef(null);
+  const [shareTogether, setShareTogether] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const dirty = useRef(new Set());
+  const pending = useRef(new Map());
+
+  const sharedId = (liveLog || existingLog)?.shared_session_id || null;
+  const isShared = !!sharedId && !readOnly && !!logId;
+
+  // Edits to a shared log go out one cell at a time, shortly after typing stops.
+  const queueSync = (key, fn) => {
+    dirty.current.add(key);
+    clearTimeout(pending.current.get(key)?.timer);
+    const run = () => {
+      pending.current.delete(key);
+      fn().then(() => { dirty.current.delete(key); setSyncError(null); })
+        .catch((err) => { dirty.current.delete(key); setSyncError(err.message || 'Could not sync that change.'); });
+    };
+    pending.current.set(key, { timer: setTimeout(run, 500), run });
+  };
+
+  useEffect(() => () => {
+    for (const { timer, run } of pending.current.values()) { clearTimeout(timer); run(); }
+  }, []);
+
+  // Take in the other person's edits to anything I'm not mid-typing in.
+  useEffect(() => {
+    if (!isShared || !liveLog) return;
+    setExercises((prev) => prev.map((ex) => {
+      const remote = (liveLog.exercises || []).find((r) => r.id === ex.id);
+      if (!remote) return ex;
+      return {
+        ...ex,
+        weight: dirty.current.has(`${ex.id}:w`) ? ex.weight : (remote.weight || ''),
+        sets: ex.sets.map((v, j) => (dirty.current.has(`${ex.id}:${j}`) ? v : (remote.sets?.[j] ?? v))),
+      };
+    }));
+    if (!dirty.current.has('dur')) setDurationMinutes(liveLog.duration_minutes ?? '');
+  }, [liveLog, isShared]);
 
   const title = existingLog ? existingLog.title : workout.title;
   const description = existingLog ? existingLog.description : workout.description;
@@ -33,6 +72,10 @@ export default function LogSheet({
 
   const setWeight = (i, val) => {
     setExercises((prev) => prev.map((ex, idx) => (idx === i ? { ...ex, weight: val } : ex)));
+    if (isShared) {
+      const exId = exercises[i].id;
+      queueSync(`${exId}:w`, () => onSyncWeight(logId, exId, val));
+    }
   };
 
   const setValue = (i, j, val) => {
@@ -41,12 +84,23 @@ export default function LogSheet({
       next[i].sets[j] = val;
       return next;
     });
+    if (isShared) {
+      const exId = exercises[i].id;
+      queueSync(`${exId}:${j}`, () => onSyncCell(logId, exId, j, val));
+    }
+  };
+
+  const changeDuration = (val) => {
+    setDurationMinutes(val);
+    if (isShared) queueSync('dur', () => onSyncDuration(logId, val === '' ? null : Number(val)));
   };
 
   const currentEntry = () => ({
     workoutId: workout.id, title, description, exercises,
     durationMinutes: durationMinutes === '' ? null : Number(durationMinutes),
     notes: notes.trim(),
+    isShared,
+    startSharing: shareTogether && !isShared,
   });
 
   const handleFilesSelected = async (fileList) => {
@@ -103,6 +157,23 @@ export default function LogSheet({
           </div>
         )}
 
+        {!readOnly && isShared && (
+          <div style={{ background: colors.accentSoft1, border: `1px solid ${colors.accentSoft3}`, borderRadius: 12, padding: '11px 13px', fontSize: 12.5, color: colors.accent, lineHeight: 1.45, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span>Logged together — reps, weights and time sync live. Notes and photos stay yours.</span>
+            <button onClick={() => onStopSharing(logId)} style={{ background: 'none', border: 'none', color: colors.textDim7, fontSize: 12, fontWeight: 600, flexShrink: 0, padding: 4 }}>Stop</button>
+          </div>
+        )}
+        {!readOnly && !isShared && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: '11px 13px', marginBottom: 16, cursor: 'pointer' }}>
+            <input type="checkbox" checked={shareTogether} onChange={(e) => setShareTogether(e.target.checked)} style={{ marginTop: 3 }} />
+            <span style={{ fontSize: 13, lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 700 }}>Log together</span>
+              <span style={{ display: 'block', color: colors.textDim55, fontSize: 12 }}>Your crew can join this log, and reps, weights and time stay in sync between you.</span>
+            </span>
+          </label>
+        )}
+        {syncError && <div style={{ fontSize: 12.5, color: '#F0A0A0', marginBottom: 12 }}>{syncError}</div>}
+
         {exercises.map((ex, i) => {
           const prev = prevLog ? prevLog.exercises.find((p) => p.id === ex.id || p.name === ex.name) : null;
           return (
@@ -149,7 +220,7 @@ export default function LogSheet({
                 <div style={{ fontSize: 12, color: colors.textDim5, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>Duration (minutes)</div>
                 <input
                   type="number" inputMode="numeric" min="0" value={durationMinutes} placeholder="45" disabled={readOnly}
-                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  onChange={(e) => changeDuration(e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: readOnly ? colors.textDim7 : colors.text, fontSize: 15, padding: '10px 11px', marginBottom: 14 }}
                 />
               </>

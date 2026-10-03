@@ -328,3 +328,41 @@ export async function deleteComment(id) {
   const { error } = await supabase.from('log_comments').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ── Shared ("log together") logs ────────────────────────────────────
+
+export async function startSharingLog(logId) {
+  const { error } = await supabase.from('logs').update({ shared_session_id: crypto.randomUUID() }).eq('id', logId);
+  if (error) throw error;
+}
+
+export async function stopSharingLog(logId) {
+  const { error } = await supabase.from('logs').update({ shared_session_id: null }).eq('id', logId);
+  if (error) throw error;
+}
+
+export async function joinSharedLog(sessionId) {
+  const { data, error } = await supabase.rpc('join_shared_log', { p_session: sessionId });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveLogNotes(logId, notes) {
+  const { error } = await supabase.from('logs').update({ notes, updated_at: new Date().toISOString() }).eq('id', logId);
+  if (error) throw error;
+}
+
+export async function setSharedCell(logId, exerciseId, setIndex, value) {
+  const { error } = await supabase.rpc('set_log_cell', { p_log_id: logId, p_exercise_id: exerciseId, p_set_index: setIndex, p_value: value });
+  if (error) throw error;
+}
+
+export async function setSharedWeight(logId, exerciseId, value) {
+  const { error } = await supabase.rpc('set_log_weight', { p_log_id: logId, p_exercise_id: exerciseId, p_value: value });
+  if (error) throw error;
+}
+
+export async function setSharedDuration(logId, minutes) {
+  const { error } = await supabase.rpc('set_log_duration', { p_log_id: logId, p_minutes: minutes });
+  if (error) throw error;
+}
