@@ -7,8 +7,15 @@
     <title>Werk Betch</title>
     <style>
       html, body, #root { height: 100%; }
-      body { margin: 0; background: #0A0A0A; }
+      body { margin: 0; background: #0A0A0A; -webkit-text-size-adjust: 100%; }
       * { box-sizing: border-box; }
+      button, label, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+      /* Exact visible height on phones (100vh includes the area behind the browser bar). */
+      .app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
+      /* iOS zooms the page when focusing any field under 16px. */
+      @media (hover: none) and (pointer: coarse) {
+        input, textarea, select { font-size: 16px !important; }
+      }
     </style>
   </head>
   <body>

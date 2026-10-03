@@ -16,13 +16,13 @@ export default function WorkoutBuilderSheet({ workout, onClose, onSave, onDelete
   const saveDisabled = !draft.title.trim() || busy;
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: colors.bg, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, background: colors.bg, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '56px 20px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
         <div style={{ fontSize: 21, fontWeight: 700 }}>{isExisting ? 'Edit Workout' : 'New Workout'}</div>
         <button onClick={onClose} style={closeBtnStyle}>×</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px', minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', padding: '0 20px', minHeight: 0 }}>
         <div style={labelStyle}>Title</div>
         <input
           type="text" value={draft.title} placeholder="Leg Day"

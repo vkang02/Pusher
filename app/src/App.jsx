@@ -200,8 +200,13 @@ export default function App() {
 
   const refresh = () => loadAppData(group, userId);
 
+  const scrollRef = useRef(null);
   const refreshRef = useRef(null);
   refreshRef.current = () => (group ? loadAppData(group, userId).catch(console.error) : undefined);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [tab]);
 
   useEffect(() => {
     if (!group?.id || !userId) return undefined;
@@ -444,8 +449,8 @@ export default function App() {
   }));
 
   return (
-    <div style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+    <div className="app-shell" style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}>
         {tab === 'home' && (
           <HomeScreen
             userName={profile.name}

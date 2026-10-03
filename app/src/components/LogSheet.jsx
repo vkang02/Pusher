@@ -136,7 +136,7 @@ export default function LogSheet({
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: colors.bg, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, background: colors.bg, zIndex: 60, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '56px 20px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 21, fontWeight: 700 }}>{title}</div>
@@ -147,7 +147,7 @@ export default function LogSheet({
         <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F4F6F2', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px', minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', padding: '0 20px', minHeight: 0 }}>
         {description && (
           <div style={{ fontSize: 14, color: colors.textDim65, lineHeight: 1.5, marginBottom: 14 }}>{description}</div>
         )}

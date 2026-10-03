@@ -65,7 +65,7 @@ export default function ActivityCard({ log, photos, reactions, comments, myUserI
       )}
 
       {photos.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch', marginTop: 12 }}>
           {photos.map((p, idx) => (
             <img
               key={p.id} src={p.url} alt="" onClick={() => setViewerIndex(idx)}
