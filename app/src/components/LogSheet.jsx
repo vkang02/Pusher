@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import PhotoViewer from './PhotoViewer.jsx';
 import { colors, longDate, shortDate } from '../lib/theme.js';
 
 function buildInitialExercises(workout, existingLog, prevLog) {
@@ -23,6 +24,7 @@ export default function LogSheet({
   const [localPhotos, setLocalPhotos] = useState(photos || []);
   const [uploading, setUploading] = useState(false);
   const [photoError, setPhotoError] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(null);
   const fileInputRef = useRef(null);
 
   const title = existingLog ? existingLog.title : workout.title;
@@ -169,11 +171,11 @@ export default function LogSheet({
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 12, color: colors.textDim5, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 9 }}>Photos</div>
             <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-              {localPhotos.map((p) => (
+              {localPhotos.map((p, idx) => (
                 <div key={p.id} style={{ position: 'relative', width: 76, height: 76, flexShrink: 0 }}>
                   <img
-                    src={p.url} alt=""
-                    style={{ width: 76, height: 76, borderRadius: 12, objectFit: 'cover', border: `1px solid ${colors.border}`, display: 'block' }}
+                    src={p.url} alt="" onClick={() => setViewerIndex(idx)}
+                    style={{ width: 76, height: 76, borderRadius: 12, objectFit: 'cover', border: `1px solid ${colors.border}`, display: 'block', cursor: 'pointer' }}
                   />
                   {!readOnly && (
                     <button
@@ -229,6 +231,9 @@ export default function LogSheet({
           </>
         )}
       </div>
+      {viewerIndex !== null && (
+        <PhotoViewer photos={localPhotos} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
+      )}
     </div>
   );
 }

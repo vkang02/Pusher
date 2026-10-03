@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import PhotoViewer from './PhotoViewer.jsx';
 import { colors, REACTION_EMOJIS, dayShort, shortDate, summaryOf } from '../lib/theme.js';
 
 export default function ActivityCard({ log, photos, reactions, comments, myUserId, onOpenLog, onToggleReaction, onAddComment, onDeleteComment }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(null);
 
   const reactionCounts = {};
   const mineByEmoji = {};
@@ -49,14 +51,18 @@ export default function ActivityCard({ log, photos, reactions, comments, myUserI
       )}
 
       {photos.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 12 }} onClick={() => onOpenLog(log)}>
-          {photos.map((p) => (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginTop: 12 }}>
+          {photos.map((p, idx) => (
             <img
-              key={p.id} src={p.url} alt=""
+              key={p.id} src={p.url} alt="" onClick={() => setViewerIndex(idx)}
               style={{ width: 96, height: 96, borderRadius: 12, objectFit: 'cover', flexShrink: 0, cursor: 'pointer', border: `1px solid ${colors.border}` }}
             />
           ))}
         </div>
+      )}
+
+      {viewerIndex !== null && (
+        <PhotoViewer photos={photos} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 13, paddingTop: 12, borderTop: `1px solid ${colors.border}` }}>
