@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { colors, colorForIndex, initialsOf, relativeStatus } from '../lib/theme.js';
 
-export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onUploadAvatar }) {
+export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -78,7 +78,11 @@ export default function GroupScreen({ group, members, myUserId, todayKey, avatar
         );
       })}
 
-      <button onClick={onSignOut} style={{ width: '100%', background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, marginTop: 22 }}>
+      <button onClick={onSetPassword} style={{ width: '100%', background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, marginTop: 22 }}>
+        Set a password
+      </button>
+
+      <button onClick={onSignOut} style={{ width: '100%', background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, marginTop: 10 }}>
         Sign out
       </button>
     </div>

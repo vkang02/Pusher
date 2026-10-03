@@ -5,6 +5,7 @@ import { isoDay } from './lib/theme.js';
 import { parseWorkbookFile } from './lib/xlsxImport.js';
 
 import SignInScreen from './screens/SignInScreen.jsx';
+import SetPasswordScreen from './screens/SetPasswordScreen.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import WorkoutsScreen from './screens/WorkoutsScreen.jsx';
@@ -22,7 +23,9 @@ export default function App() {
   const [group, setGroup] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
-  const [magicLinkSentTo, setMagicLinkSentTo] = useState(null);
+  const [authNotice, setAuthNotice] = useState(null);
+  const [recovering, setRecovering] = useState(false);
+  const [settingPassword, setSettingPassword] = useState(false);
 
   const userId = session?.user?.id || null;
 
@@ -79,7 +82,10 @@ export default function App() {
       setSession(session);
       setSessionChecked(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -108,18 +114,57 @@ export default function App() {
     })();
   }, [sessionChecked, userId, loadAppData]);
 
-  const handleSendMagicLink = async (email) => {
+  const clearAuthMessages = () => { setAuthError(null); setAuthNotice(null); };
+
+  const runAuth = async (fn) => {
     setAuthBusy(true);
-    setAuthError(null);
+    clearAuthMessages();
     try {
-      await api.sendMagicLink(email);
-      setMagicLinkSentTo(email);
+      await fn();
     } catch (err) {
-      setAuthError(err.message || 'Could not send the link.');
+      setAuthError(err.message || 'Something went wrong.');
     } finally {
       setAuthBusy(false);
     }
   };
+
+  const handlePasswordLogin = (email, password) =>
+    runAuth(async () => {
+      try {
+        await api.signInWithPassword(email, password);
+      } catch (err) {
+        if (/invalid login credentials/i.test(err.message)) {
+          throw new Error("Wrong email or password. If you haven't set a password yet, tap \"Forgot password\" below.");
+        }
+        throw err;
+      }
+    });
+
+  const handleSignUp = (email, password) =>
+    runAuth(async () => {
+      try {
+        const data = await api.signUpWithPassword(email, password);
+        if (!data.session) setAuthNotice('Check your email to confirm your account, then log in.');
+      } catch (err) {
+        if (/already registered/i.test(err.message)) {
+          throw new Error('That email already has an account. Log in, or tap "Forgot password" to set a password.');
+        }
+        throw err;
+      }
+    });
+
+  const handleForgotPassword = (email) =>
+    runAuth(async () => {
+      await api.sendPasswordReset(email);
+      setAuthNotice('If that email has an account, a reset link is on its way. Open it on this device.');
+    });
+
+  const handleSetPassword = (password) =>
+    runAuth(async () => {
+      await api.updatePassword(password);
+      setRecovering(false);
+      setSettingPassword(false);
+    });
 
   const handleSignIn = async ({ name, group: groupInput, mode }) => {
     setAuthBusy(true);
@@ -290,7 +335,30 @@ export default function App() {
   if (!session) {
     return (
       <div style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', minHeight: '100vh' }}>
-        <SignInScreen onSendLink={handleSendMagicLink} error={authError} busy={authBusy} sentTo={magicLinkSentTo} />
+        <SignInScreen
+          onSignIn={handlePasswordLogin}
+          onSignUp={handleSignUp}
+          onForgot={handleForgotPassword}
+          onClearMessages={clearAuthMessages}
+          error={authError}
+          notice={authNotice}
+          busy={authBusy}
+        />
+      </div>
+    );
+  }
+
+  if (recovering || settingPassword) {
+    return (
+      <div style={{ background: '#0A0A0A', color: '#F4F6F2', fontFamily: '-apple-system, system-ui, sans-serif', minHeight: '100vh' }}>
+        <SetPasswordScreen
+          heading={recovering ? 'Set a new password' : 'Set a password'}
+          blurb="Use this with your email to log in on any device, and you'll stay logged in until you sign out."
+          onSubmit={handleSetPassword}
+          onCancel={recovering ? null : () => { setSettingPassword(false); clearAuthMessages(); }}
+          error={authError}
+          busy={authBusy}
+        />
       </div>
     );
   }
@@ -366,6 +434,7 @@ export default function App() {
             todayKey={todayKey}
             avatarByUser={avatarByUser}
             onSignOut={handleSignOut}
+            onSetPassword={() => { clearAuthMessages(); setSettingPassword(true); }}
             onUploadAvatar={handleUploadAvatar}
           />
         )}
