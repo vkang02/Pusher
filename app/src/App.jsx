@@ -374,6 +374,12 @@ export default function App() {
     await refresh();
   };
 
+  const handleRename = async (name) => {
+    await api.updateName(userId, name);
+    setProfile((p) => ({ ...p, name }));
+    await refresh();
+  };
+
   const handleUploadAvatar = async (file) => {
     await api.uploadAvatar(userId, file);
     await loadAvatars(members);
@@ -490,6 +496,7 @@ export default function App() {
             onSignOut={handleSignOut}
             onSetPassword={() => { clearAuthMessages(); setSettingPassword(true); }}
             onUploadAvatar={handleUploadAvatar}
+            onRename={handleRename}
           />
         )}
       </div>

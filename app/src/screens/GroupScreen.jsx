@@ -1,9 +1,29 @@
 import React, { useRef, useState } from 'react';
 import { colors, colorForIndex, initialsOf, relativeStatus } from '../lib/theme.js';
 
-export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar }) {
+export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar, onRename }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState(null);
+
+  const startRename = (current) => { setNameDraft(current); setNameError(null); setEditingName(true); };
+  const saveName = async () => {
+    const next = nameDraft.trim();
+    if (!next) { setNameError('Name can\'t be empty.'); return; }
+    setSavingName(true);
+    setNameError(null);
+    try {
+      await onRename(next.slice(0, 30));
+      setEditingName(false);
+    } catch (err) {
+      setNameError(err.message || 'Could not save your name.');
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const handleAvatarFile = async (file) => {
     if (!file) return;
@@ -52,11 +72,39 @@ export default function GroupScreen({ group, members, myUserId, todayKey, avatar
                 ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={(e) => { handleAvatarFile(e.target.files[0]); e.target.value = ''; }}
               />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15.5, fontWeight: 700 }}>{m.name}</div>
-                <div style={{ fontSize: 12.5, color: colors.textDim65 }}>{status}</div>
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: colors.accent, flexShrink: 0 }}>{m.total}x</div>
+              {editingName ? (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); saveName(); }}
+                  style={{ flex: 1, minWidth: 0 }}
+                >
+                  <input
+                    type="text" value={nameDraft} maxLength={30} autoFocus
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box', background: '#161816', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, color: '#F4F6F2', fontSize: 16, padding: '8px 10px', marginBottom: 8 }}
+                  />
+                  {nameError && <div style={{ fontSize: 12.5, color: '#F0A0A0', marginBottom: 8 }}>{nameError}</div>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={savingName} style={{ background: colors.accent, color: '#0A0A0A', border: 'none', borderRadius: 10, padding: '7px 14px', fontSize: 13.5, fontWeight: 700 }}>
+                      {savingName ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" onClick={() => setEditingName(false)} style={{ background: 'none', border: 'none', color: colors.textDim55, fontSize: 13.5, padding: '7px 8px' }}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15.5, fontWeight: 700 }}>{m.name}</div>
+                    <div style={{ fontSize: 12.5, color: colors.textDim65 }}>{status}</div>
+                  </div>
+                  <button
+                    onClick={() => startRename(m.name)} aria-label="Change your name"
+                    style={{ background: 'none', border: `1px solid ${colors.accentSoft3}`, color: colors.accent, borderRadius: 10, fontSize: 11.5, fontWeight: 700, padding: '4px 10px', flexShrink: 0 }}
+                  >
+                    Edit
+                  </button>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: colors.accent, flexShrink: 0 }}>{m.total}x</div>
+                </>
+              )}
             </div>
           );
         }

@@ -37,6 +37,11 @@ export async function upsertProfile(userId, name) {
   if (error) throw error;
 }
 
+export async function updateName(userId, name) {
+  const { error } = await supabase.from('profiles').update({ name }).eq('id', userId);
+  if (error) throw error;
+}
+
 export async function uploadAvatar(userId, file) {
   const { data: prof } = await supabase.from('profiles').select('avatar_path').eq('id', userId).maybeSingle();
   const oldPath = prof?.avatar_path;
