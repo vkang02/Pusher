@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PhotoViewer from './PhotoViewer.jsx';
 import { colors, longDate, shortDate, uid } from '../lib/theme.js';
+import { loadDraft, saveDraft, clearDraft } from '../lib/drafts.js';
 
 function buildInitialExercises(workout, existingLog, prevLog) {
   const base = existingLog ? existingLog.exercises : workout.exercises;
@@ -21,11 +22,20 @@ export default function LogSheet({
   workout, existingLog, liveLog, prevLog, dateKey, isNew, readOnly, ownerName, photos,
   onClose, onSave, onDelete, onEnsureSaved, onUploadPhoto, onDeletePhoto, busy,
   onSyncCell, onSyncWeight, onSyncDuration, onStopSharing,
-  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor,
+  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor, draftKey,
 }) {
-  const [exercises, setExercises] = useState(() => buildInitialExercises(workout, existingLog, prevLog));
-  const [durationMinutes, setDurationMinutes] = useState(existingLog?.duration_minutes ?? '');
-  const [notes, setNotes] = useState(existingLog?.notes ?? '');
+  // Changes that were typed but not saved when the app was last closed or discarded by the phone.
+  const [restored] = useState(() => {
+    const d = draftKey && !readOnly ? loadDraft(draftKey) : null;
+    if (!d) return null;
+    if (existingLog?.shared_session_id) return { notes: d.notes }; // shared cells live on the server
+    if (existingLog && (d.base ?? null) !== (existingLog.updated_at ?? null)) return null; // log changed since
+    return d;
+  });
+  const [exercises, setExercises] = useState(() => restored?.exercises || buildInitialExercises(workout, existingLog, prevLog));
+  const [durationMinutes, setDurationMinutes] = useState(restored?.exercises ? (restored.durationMinutes ?? '') : (existingLog?.duration_minutes ?? ''));
+  const [notes, setNotes] = useState(restored?.notes ?? existingLog?.notes ?? '');
+  const [restoredNote, setRestoredNote] = useState(!!restored?.exercises);
   const [logId, setLogId] = useState(existingLog?.id ?? null);
   const [sess, setSess] = useState(existingLog?.shared_session_id ?? null);
   const [localPhotos, setLocalPhotos] = useState(photos || []);
@@ -34,7 +44,7 @@ export default function LogSheet({
   const [viewerIndex, setViewerIndex] = useState(null);
   const fileInputRef = useRef(null);
   // Remembered choice: a brand-new log starts out ticked if I chose Log together last time.
-  const [shareTogether, setShareTogether] = useState(() => !!existingLog?.shared_session_id || (!readOnly && isNew && !!logTogetherPref));
+  const [shareTogether, setShareTogether] = useState(() => !!existingLog?.shared_session_id || (restored?.exercises ? !!restored.shareTogether : (!readOnly && isNew && !!logTogetherPref)));
   const [syncError, setSyncError] = useState(null);
   const [flash, setFlash] = useState(() => new Set());
   const [adding, setAdding] = useState(false);
@@ -51,6 +61,22 @@ export default function LogSheet({
   const startRef = useRef(null);      // in-flight "start / join the shared sheet" call
   const flashTimer = useRef(null);
   const addChain = useRef(Promise.resolve());   // added exercises are saved in order, before any cell that depends on them
+  const touched = useRef(!!restored);   // only keep a draft once something has actually been typed
+  const discarded = useRef(false);
+  const draftTimer = useRef(null);
+  const markTouched = () => { touched.current = true; if (restoredNote) setRestoredNote(false); };
+
+  const writeDraft = () => {
+    if (!draftKey || readOnly || discarded.current || !touched.current) return;
+    const s = latest.current;
+    saveDraft(draftKey, { exercises: s.exercises, durationMinutes: s.durationMinutes, notes: s.notes, shareTogether: s.shareTogether, base: existingLog?.updated_at ?? null });
+  };
+  // Drop the draft once the work is saved or deliberately closed.
+  const discardDraft = () => {
+    discarded.current = true;
+    clearTimeout(draftTimer.current);
+    if (draftKey) clearDraft(draftKey);
+  };
 
   const isShared = !!sess && !readOnly && !!logId;
   const title = existingLog ? existingLog.title : workout.title;
@@ -168,6 +194,29 @@ export default function LogSheet({
     pending.current.set(key, { timer: setTimeout(run, SYNC_DELAY_MS), run });
   };
 
+  // Mirror what's on screen into storage shortly after each change, and right away when the app is hidden.
+  useEffect(() => {
+    if (!touched.current) return undefined;
+    clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(writeDraft, 300);
+    return () => clearTimeout(draftTimer.current);
+  }, [exercises, durationMinutes, notes, shareTogether]);
+
+  useEffect(() => {
+    const flush = () => { clearTimeout(draftTimer.current); writeDraft(); };
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', flush);
+    return () => { document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', flush); clearTimeout(draftTimer.current); };
+  }, []);
+
+  // Restored a draft with Log together on: get it back onto the shared sheet.
+  useEffect(() => {
+    if (restored?.exercises && !readOnly && latest.current.shareTogether && !sessRef.current) {
+      ensureSharedNow().catch((err) => setSyncError(err.message || 'Could not start sharing.'));
+    }
+  }, []);
+
   useEffect(() => () => {
     clearTimeout(flashTimer.current);
     for (const { timer, run } of pending.current.values()) { clearTimeout(timer); run(); }
@@ -216,12 +265,14 @@ export default function LogSheet({
   const exNow = (exId) => latest.current.exercises.find((e) => e.id === exId);
 
   const setWeight = (i, val) => {
+    markTouched();
     const exId = exercises[i].id;
     setExercises((prev) => prev.map((ex, idx) => (idx === i ? { ...ex, weight: val } : ex)));
     if (shareActive()) queueSync(`${exId}:w`, (id) => onSyncWeight(id, exId, exNow(exId)?.weight ?? val));
   };
 
   const setValue = (i, j, val) => {
+    markTouched();
     const exId = exercises[i].id;
     setExercises((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
@@ -232,6 +283,7 @@ export default function LogSheet({
   };
 
   const changeDuration = (val) => {
+    markTouched();
     setDurationMinutes(val);
     if (shareActive()) {
       queueSync('dur', (id) => {
@@ -242,6 +294,7 @@ export default function LogSheet({
   };
 
   const toggleShare = (on) => {
+    markTouched();
     setShareTogether(on);
     latest.current.shareTogether = on;
     onSetLogTogether?.(on);
@@ -252,6 +305,7 @@ export default function LogSheet({
   };
 
   const addExercise = () => {
+    markTouched();
     const name = newName.trim();
     if (!name) return;
     const count = Math.max(1, Math.min(10, Number(newSets) || 3));
@@ -269,6 +323,7 @@ export default function LogSheet({
   };
 
   const removeExercise = (i) => {
+    markTouched();
     const ex = exercises[i];
     if (sessRef.current && idRef.current) {
       setExercises((prev) => prev.map((e, idx) => (idx === i ? { ...e, removed: true } : e)));
@@ -297,6 +352,7 @@ export default function LogSheet({
           id = saved.id;
           idRef.current = id;
           setLogId(id);
+          onAdopt?.(saved);
         }
       }
       for (const file of files) {
@@ -328,7 +384,7 @@ export default function LogSheet({
             {longDate(dateKey)}{ownerName ? ` · ${ownerName}` : ''}
           </div>
         </div>
-        <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F4F6F2', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+        <button onClick={() => { discardDraft(); onClose(); }} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F4F6F2', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', padding: '0 20px', minHeight: 0 }}>
@@ -349,7 +405,7 @@ export default function LogSheet({
                 {partners.length ? 'You\'re on the same sheet — reps, weights and time update for both of you instantly. Notes and photos stay yours.' : 'Waiting for your crew to open this workout. Whatever you enter shows up on their sheet as soon as they do.'}
               </span>
             </span>
-            <button onClick={() => onStopSharing(logId)} style={{ background: 'none', border: 'none', color: colors.textDim7, fontSize: 12, fontWeight: 600, flexShrink: 0, padding: 4 }}>Stop</button>
+            <button onClick={() => Promise.resolve(onStopSharing(logId)).then(discardDraft)} style={{ background: 'none', border: 'none', color: colors.textDim7, fontSize: 12, fontWeight: 600, flexShrink: 0, padding: 4 }}>Stop</button>
           </div>
         )}
         {!readOnly && !isShared && (
@@ -364,6 +420,11 @@ export default function LogSheet({
               </span>
             </span>
           </label>
+        )}
+        {restoredNote && (
+          <div style={{ background: colors.accentSoft1, border: `1px solid ${colors.accentSoft3}`, borderRadius: 12, padding: '10px 13px', fontSize: 12.5, color: colors.accent, lineHeight: 1.45, marginBottom: 16 }}>
+            Picked up where you left off. Your unsaved changes were restored.
+          </div>
         )}
         {syncError && <div style={{ fontSize: 12.5, color: '#F0A0A0', marginBottom: 12 }}>{syncError}</div>}
 
@@ -460,7 +521,7 @@ export default function LogSheet({
                 <div style={{ fontSize: 12, color: colors.textDim5, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 7 }}>Notes</div>
                 <textarea
                   value={notes} placeholder="Jelly arms, forearms are shot…" rows={2} disabled={readOnly}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => { markTouched(); setNotes(e.target.value); }}
                   style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, color: readOnly ? colors.textDim7 : colors.text, fontSize: 14, fontFamily: 'inherit', resize: 'none', padding: '10px 11px' }}
                 />
               </>
@@ -510,7 +571,7 @@ export default function LogSheet({
       <div style={{ padding: '14px 20px 22px', borderTop: `1px solid ${colors.border}`, flexShrink: 0, display: 'flex', gap: 9 }}>
         {readOnly ? (
           <button
-            onClick={onClose}
+            onClick={() => { discardDraft(); onClose(); }}
             style={{ flex: 1, borderRadius: 13, padding: 14, fontSize: 15.5, fontWeight: 700, border: `1px solid ${colors.border15}`, background: 'none', color: colors.text }}
           >
             Close
@@ -518,12 +579,12 @@ export default function LogSheet({
         ) : (
           <>
             {!isNew && (
-              <button onClick={onDelete} disabled={busy} style={{ background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 13, padding: '14px 16px', fontSize: 14.5, fontWeight: 600, flexShrink: 0 }}>
+              <button onClick={() => Promise.resolve(onDelete()).then(discardDraft).catch((err) => setSyncError(err.message || 'Could not remove that log.'))} disabled={busy} style={{ background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 13, padding: '14px 16px', fontSize: 14.5, fontWeight: 600, flexShrink: 0 }}>
                 Remove
               </button>
             )}
             <button
-              onClick={() => onSave(entryNow())}
+              onClick={() => Promise.resolve(onSave(entryNow())).then(discardDraft).catch((err) => setSyncError(err.message || 'Could not save.'))}
               disabled={busy}
               style={{ flex: 1, borderRadius: 13, padding: 14, fontSize: 15.5, fontWeight: 700, border: 'none', background: colors.accent, color: '#0A0A0A' }}
             >

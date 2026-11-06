@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabaseClient.js';
 import * as api from './lib/api.js';
 import { isoDay } from './lib/theme.js';
+import { draftKey as makeDraftKey, saveMarker, loadMarker, clearMarker } from './lib/drafts.js';
 import { parseWorkbookFile } from './lib/xlsxImport.js';
 
 import SignInScreen from './screens/SignInScreen.jsx';
@@ -433,6 +434,31 @@ export default function App() {
     }
   }, [logs, groupLogs, userId]);
 
+  // Remember which workout sheet is open, and put it back if the phone discarded the app meanwhile.
+  const restoreTried = useRef(false);
+  useEffect(() => {
+    if (!userId || loading || !profile || !group) return;
+    if (!restoreTried.current) {
+      restoreTried.current = true;
+      const marker = loadMarker(userId);
+      if (marker && !logSheetCtx && marker.dateKey === todayKey) {
+        const existing = marker.existingLogId ? logs.find((l) => l.id === marker.existingLogId) : null;
+        const workout = workouts.find((w) => w.id === marker.workoutId);
+        if (existing) openExistingLog(existing);
+        else if (workout) openLogToday(workout);
+        else clearMarker(userId);
+      } else if (marker) {
+        clearMarker(userId);
+      }
+      return;
+    }
+    if (logSheetCtx && !logSheetCtx.readOnly) {
+      saveMarker(userId, { workoutId: logSheetCtx.workout.id || null, existingLogId: logSheetCtx.existingLog?.id || null, dateKey: logSheetCtx.dateKey });
+    } else {
+      clearMarker(userId);
+    }
+  }, [userId, loading, profile, group, logSheetCtx]);
+
   const handleSetLogTogether = (on) => api.setLogTogetherPref(on).catch(console.error);
 
   const partnerNamesFor = (sessionId) => {
@@ -601,6 +627,7 @@ export default function App() {
           onSetLogTogether={handleSetLogTogether}
           onEnsureShared={(entry) => ensureShared(entry, logSheetCtx.dateKey)}
           onPollShared={(args) => pollShared({ ...args, dateKey: logSheetCtx.dateKey })}
+          draftKey={makeDraftKey(userId, logSheetCtx.dateKey, logSheetCtx.workout.id)}
           onAddExercise={api.addExerciseToLog}
           onAdopt={(row) => setLogSheetCtx((c) => (c ? { ...c, existingLog: row } : c))}
           partnerNamesFor={partnerNamesFor}
