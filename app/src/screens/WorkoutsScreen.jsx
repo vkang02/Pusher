@@ -44,7 +44,7 @@ export default function WorkoutsScreen({ workouts, logsByWorkout, onOpenBuilder,
                 {wLogs.slice(0, 3).map((lg) => (
                   <div key={lg.log_date} onClick={() => onOpenLog(lg)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '5px 0', cursor: 'pointer' }}>
                     <span style={{ fontSize: 12.5, color: colors.textDim7 }}>{new Date(lg.log_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} {new Date(lg.log_date + 'T00:00:00').getDate()}</span>
-                    <span style={{ fontSize: 12.5, color: colors.textDim45 }}>{(lg.exercises || []).length} exercises · {(lg.exercises || []).reduce((n, ex) => n + (ex.sets || []).length, 0)} sets</span>
+                    <span style={{ fontSize: 12.5, color: colors.textDim45 }}>{(lg.exercises || []).filter((e) => !e.removed).length} exercises · {(lg.exercises || []).filter((e) => !e.removed).reduce((n, ex) => n + (ex.sets || []).length, 0)} sets</span>
                   </div>
                 ))}
               </div>

@@ -308,10 +308,12 @@ export default function App() {
     try {
       if (entry.isShared) {
         // Shared fields sync cell-by-cell while editing; saving only needs the notes.
-        await api.saveLogNotes(logSheetCtx.existingLog.id, entry.notes);
+        await api.saveLogNotes(entry.logId, entry.notes);
+      } else if (entry.startSharing) {
+        const row = await ensureShared(entry, logSheetCtx.dateKey);
+        await api.saveLogNotes(row.id, entry.notes);
       } else {
-        const saved = await api.saveLog(group.id, userId, logSheetCtx.dateKey, entry);
-        if (entry.startSharing) await api.startSharingLog(saved.id);
+        await api.saveLog(group.id, userId, logSheetCtx.dateKey, entry);
       }
       setLogSheetCtx(null);
       await refresh();
@@ -360,6 +362,83 @@ export default function App() {
   const handleDeleteComment = async (commentId) => {
     await api.deleteComment(commentId);
     await loadSocialData(groupLogs);
+  };
+
+  // Copy my typed-in cells onto a shared row wherever the shared sheet is still blank.
+  const fillBlanks = async (row, mine, mineDuration) => {
+    for (const ex of mine || []) {
+      const remote = (row.exercises || []).find((r) => r.id === ex.id);
+      if (!remote) continue;
+      if (ex.weight && !remote.weight) await api.setSharedWeight(row.id, ex.id, ex.weight);
+      for (let j = 0; j < ex.sets.length; j++) {
+        if (ex.sets[j] && !remote.sets?.[j]) await api.setSharedCell(row.id, ex.id, j, ex.sets[j]);
+      }
+    }
+    if (mineDuration != null && row.duration_minutes == null) await api.setSharedDuration(row.id, mineDuration);
+  };
+
+  const joinAndMerge = async (sessionId, mine, mineDuration) => {
+    const row = await api.joinSharedLog(sessionId);
+    await fillBlanks(row, mine, mineDuration);
+    const fresh = (await api.fetchLogById(row.id)) || row;
+    refresh();
+    return fresh;
+  };
+
+  // Put my log into a shared sheet: join the crew's if they've started this workout today,
+  // otherwise start one. Two people starting at once settle on the same (lowest-id) session.
+  const ensureShared = async (entry, dateKey) => {
+    const others = await api.findSharedSessions(group.id, userId, entry.workoutId, dateKey);
+    if (others.length) return joinAndMerge([...others].sort()[0], entry.exercises, entry.durationMinutes);
+    const saved = await api.saveLog(group.id, userId, dateKey, entry);
+    const sessionId = saved.shared_session_id || (await api.startSharingLog(saved.id));
+    const rivals = await api.findSharedSessions(group.id, userId, entry.workoutId, dateKey);
+    const lowest = [sessionId, ...rivals].sort()[0];
+    if (lowest !== sessionId) return joinAndMerge(lowest, entry.exercises, entry.durationMinutes);
+    refresh();
+    return { ...saved, shared_session_id: sessionId };
+  };
+
+  // Called every few seconds from an open sheet: pick up the crew's session, settle races,
+  // and return my row as it is now (a backstop in case a live update was missed).
+  const pollShared = async ({ logId, sessionId, want, workoutId, dateKey, exercises, durationMinutes }) => {
+    const others = sessionId || want ? await api.findSharedSessions(group.id, userId, workoutId, dateKey) : [];
+    if (!sessionId) {
+      if (want && others.length) return joinAndMerge([...others].sort()[0], exercises, durationMinutes);
+      return null;
+    }
+    const lowest = [sessionId, ...others].sort()[0];
+    if (lowest !== sessionId) return joinAndMerge(lowest, exercises, durationMinutes);
+    if (!logId) return null;
+    const rows = await api.fetchSessionLogs(sessionId);
+    const mine = rows.find((r) => r.id === logId);
+    const mates = rows.filter((r) => r.id !== logId);
+    const pulled = mine && mates.length ? await api.pullMateExercises(logId, mates) : null;
+    return pulled || mine || null;
+  };
+
+  // Exercises a crewmate adds (or removes) on a shared log land on my copy too, even if my sheet is closed.
+  const pullingRef = useRef(new Set());
+  useEffect(() => {
+    if (!userId) return;
+    for (const mine of logs) {
+      if (!mine.shared_session_id || pullingRef.current.has(mine.id)) continue;
+      const mates = groupLogs.filter((l) => l.shared_session_id === mine.shared_session_id && l.user_id !== userId);
+      if (!mates.length || !api.exercisesAfterPull(mine.exercises || [], mates)) continue;
+      pullingRef.current.add(mine.id);
+      api.pullMateExercises(mine.id, mates)
+        .then(() => refreshRef.current?.())
+        .catch(console.error)
+        .finally(() => pullingRef.current.delete(mine.id));
+    }
+  }, [logs, groupLogs, userId]);
+
+  const handleSetLogTogether = (on) => api.setLogTogetherPref(on).catch(console.error);
+
+  const partnerNamesFor = (sessionId) => {
+    if (!sessionId) return [];
+    const ids = new Set(groupLogs.filter((l) => l.shared_session_id === sessionId && l.user_id !== userId).map((l) => l.user_id));
+    return members.filter((m) => ids.has(m.userId)).map((m) => m.name);
   };
 
   const handleJoinShared = async (log) => {
@@ -518,6 +597,13 @@ export default function App() {
           workout={logSheetCtx.workout}
           existingLog={logSheetCtx.existingLog}
           liveLog={logSheetCtx.existingLog ? logs.find((l) => l.id === logSheetCtx.existingLog.id) || null : null}
+          logTogetherPref={session?.user?.user_metadata?.log_together === true}
+          onSetLogTogether={handleSetLogTogether}
+          onEnsureShared={(entry) => ensureShared(entry, logSheetCtx.dateKey)}
+          onPollShared={(args) => pollShared({ ...args, dateKey: logSheetCtx.dateKey })}
+          onAddExercise={api.addExerciseToLog}
+          onAdopt={(row) => setLogSheetCtx((c) => (c ? { ...c, existingLog: row } : c))}
+          partnerNamesFor={partnerNamesFor}
           prevLog={logSheetCtx.prevLog}
           dateKey={logSheetCtx.dateKey}
           isNew={logSheetCtx.isNew}

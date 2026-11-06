@@ -337,7 +337,36 @@ export async function deleteComment(id) {
 // ── Shared ("log together") logs ────────────────────────────────────
 
 export async function startSharingLog(logId) {
-  const { error } = await supabase.from('logs').update({ shared_session_id: crypto.randomUUID() }).eq('id', logId);
+  const sessionId = crypto.randomUUID();
+  const { error } = await supabase.from('logs').update({ shared_session_id: sessionId }).eq('id', logId);
+  if (error) throw error;
+  return sessionId;
+}
+
+// Shared sessions other members already have going for this workout on this day.
+export async function findSharedSessions(groupId, userId, workoutId, logDate) {
+  if (!workoutId) return [];
+  const { data, error } = await supabase
+    .from('logs')
+    .select('shared_session_id')
+    .eq('group_id', groupId)
+    .eq('log_date', logDate)
+    .eq('workout_id', workoutId)
+    .neq('user_id', userId)
+    .not('shared_session_id', 'is', null);
+  if (error) throw error;
+  return [...new Set(data.map((r) => r.shared_session_id))];
+}
+
+export async function fetchLogById(logId) {
+  const { data, error } = await supabase.from('logs').select('*').eq('id', logId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Remembered per account (not per device), so it follows you to a new phone.
+export async function setLogTogetherPref(on) {
+  const { error } = await supabase.auth.updateUser({ data: { log_together: on } });
   if (error) throw error;
 }
 
@@ -370,4 +399,59 @@ export async function setSharedWeight(logId, exerciseId, value) {
 export async function setSharedDuration(logId, minutes) {
   const { error } = await supabase.rpc('set_log_duration', { p_log_id: logId, p_minutes: minutes });
   if (error) throw error;
+}
+
+// ── Adding / removing exercises on a log ────────────────────────────
+
+// Edit my log's exercise list without clobbering a cell someone just synced into it: read the row,
+// write back only if nobody touched it in between (updated_at unchanged), otherwise try again.
+export async function patchLogExercises(logId, mutate) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { data: row, error } = await supabase.from('logs').select('exercises, updated_at').eq('id', logId).maybeSingle();
+    if (error) throw error;
+    if (!row) return null;
+    const next = mutate(row.exercises || []);
+    if (!next) return null; // nothing to change
+    const { data, error: uErr } = await supabase
+      .from('logs')
+      .update({ exercises: next, updated_at: new Date().toISOString() })
+      .eq('id', logId)
+      .eq('updated_at', row.updated_at)
+      .select()
+      .maybeSingle();
+    if (uErr) throw uErr;
+    if (data) return data;
+  }
+  throw new Error('Could not save that change. Try again.');
+}
+
+// Add an exercise to a log, or mark one removed (removals are kept as a flag so a crewmate's copy can follow).
+export const addExerciseToLog = (logId, ex) =>
+  patchLogExercises(logId, (list) => {
+    const cur = list.find((e) => e.id === ex.id);
+    if (!cur) return [...list, ex];
+    if (ex.removed && !cur.removed) return list.map((e) => (e.id === ex.id ? { ...e, removed: true } : e));
+    return null;
+  });
+
+// What my exercise list is missing compared with the crew's rows in the same shared session.
+export function exercisesAfterPull(mine, mateRows) {
+  let next = mine;
+  let changed = false;
+  for (const row of mateRows) {
+    for (const ex of row.exercises || []) {
+      const cur = next.find((e) => e.id === ex.id);
+      if (!cur) { next = [...next, ex]; changed = true; }
+      else if (ex.removed && !cur.removed) { next = next.map((e) => (e.id === ex.id ? { ...e, removed: true } : e)); changed = true; }
+    }
+  }
+  return changed ? next : null;
+}
+
+export const pullMateExercises = (logId, mateRows) => patchLogExercises(logId, (list) => exercisesAfterPull(list, mateRows));
+
+export async function fetchSessionLogs(sessionId) {
+  const { data, error } = await supabase.from('logs').select('*').eq('shared_session_id', sessionId);
+  if (error) throw error;
+  return data;
 }

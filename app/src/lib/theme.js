@@ -25,7 +25,7 @@ export const isoDay = (d) =>
   d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
 export function summaryOf(entry) {
-  const exercises = entry.exercises || [];
+  const exercises = (entry.exercises || []).filter((e) => !e.removed);
   const count = exercises.length;
   const setTotal = exercises.reduce((n, ex) => n + (ex.sets || []).length, 0);
   const base = `${count} exercise${count === 1 ? '' : 's'} · ${setTotal} sets`;
