@@ -1,5 +1,6 @@
 import React from 'react';
 import { colors, initialsOf } from '../lib/theme.js';
+import PlayerControls from './PlayerControls.jsx';
 
 const card = { background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 14, marginBottom: 16 };
 const smallBtn = { border: 'none', borderRadius: 10, padding: '7px 12px', fontSize: 12.5, fontWeight: 700, flexShrink: 0 };
@@ -60,7 +61,7 @@ export function MyTrack({ music }) {
 }
 
 // The music card at the top of a workout: connect, start/stop sharing, and what the crew is playing.
-export default function MusicCard({ music }) {
+export default function MusicCard({ music, player }) {
   if (!music?.available) return null;
   const { link, mine, crew, error, busy, listeningTo } = music;
   const sharing = !!mine;
@@ -95,6 +96,12 @@ export default function MusicCard({ music }) {
       )}
 
       {sharing && <MyTrack music={music} />}
+
+      {link && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${colors.border}` }}>
+          <PlayerControls player={player} />
+        </div>
+      )}
 
       {crew.length > 0 && (
         <div style={{ marginTop: 12, paddingTop: 6, borderTop: `1px solid ${colors.border}` }}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PhotoViewer from './PhotoViewer.jsx';
-import MusicCard from './MusicCard.jsx';
+import MusicDock from './MusicDock.jsx';
 import { colors, longDate, shortDate, uid } from '../lib/theme.js';
 import { loadDraft, saveDraft, clearDraft } from '../lib/drafts.js';
 
@@ -422,7 +422,6 @@ export default function LogSheet({
             </span>
           </label>
         )}
-        {!readOnly && <MusicCard music={music} />}
         {restoredNote && (
           <div style={{ background: colors.accentSoft1, border: `1px solid ${colors.accentSoft3}`, borderRadius: 12, padding: '10px 13px', fontSize: 12.5, color: colors.accent, lineHeight: 1.45, marginBottom: 16 }}>
             Picked up where you left off. Your unsaved changes were restored.
@@ -569,6 +568,8 @@ export default function LogSheet({
           </div>
         )}
       </div>
+
+      {!readOnly && <MusicDock music={music} />}
 
       <div style={{ padding: '14px 20px 22px', borderTop: `1px solid ${colors.border}`, flexShrink: 0, display: 'flex', gap: 9 }}>
         {readOnly ? (

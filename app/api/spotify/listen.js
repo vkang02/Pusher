@@ -1,4 +1,4 @@
-import { authedUser, db, guard, send, spotify } from '../_lib.js';
+import { authedUser, db, guard, onDevice, send, spotify } from '../_lib.js';
 
 // "Listen along": play the song a crewmate is sharing on the caller's own Spotify, at the same spot.
 export default guard(async (req, res) => {
@@ -21,15 +21,9 @@ export default guard(async (req, res) => {
   const body = JSON.stringify({ uris: [row.track_uri], position_ms: position });
   const put = (query = '') => spotify(user.id, `/me/player/play${query}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
 
-  let r = await put();
+  const { r, noDevice } = await onDevice(user.id, put);
   if (r.noToken) return send(res, 409, { error: 'not_connected', message: 'Connect Spotify first.' });
-  if (r.status === 404) {
-    // No active device: wake the first one Spotify knows about (the phone with the Spotify app open).
-    const devices = await spotify(user.id, '/me/player/devices');
-    const device = devices.json?.devices?.find((d) => !d.is_restricted);
-    if (!device) return send(res, 409, { error: 'no_device', message: 'Open Spotify on your phone and play anything for a second, then try again.' });
-    r = await put(`?device_id=${encodeURIComponent(device.id)}`);
-  }
+  if (noDevice) return send(res, 409, { error: 'no_device', message: 'Open Spotify on your phone and play anything for a second, then try again.' });
   if (r.status === 200 || r.status === 204) return send(res, 200, { title: row.title, artist: row.artist });
   if (r.status === 403) return send(res, 403, { error: 'premium_required', message: 'Listening along needs Spotify Premium.' });
   send(res, 502, { error: 'spotify_error', message: "Spotify wouldn't play that song. Try again." });

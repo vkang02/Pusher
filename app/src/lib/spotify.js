@@ -2,7 +2,7 @@ import { supabase } from '../supabaseClient.js';
 
 // The Client ID is public (it's in the sign-in link), so it's fine to have it here.
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '31d627487030430a87181fa623afdf84';
-const SCOPES = 'user-read-currently-playing user-read-playback-state user-modify-playback-state';
+const SCOPES = 'user-read-currently-playing user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
 const STATE_KEY = 'wb:spotify-state';
 
 // A song counts as "live" while the server keeps refreshing it. If its checker stops, it fades out.
@@ -46,6 +46,8 @@ export const connectSpotify = (code) => call('/api/spotify/connect', { code, red
 export const disconnectSpotify = () => call('/api/spotify/disconnect');
 export const startSharingMusic = () => call('/api/spotify/share', { action: 'start' });
 export const stopSharingMusic = () => call('/api/spotify/share', { action: 'stop' });
+// Remote control for my own Spotify: status, play (optionally a uri), pause, next, previous, search, playlists.
+export const playerCall = (action, extra) => call('/api/spotify/player', { action, ...extra });
 export const listenAlong = (targetUserId) => call('/api/spotify/listen', { targetUserId });
 
 // available:false means the Spotify tables aren't in the database yet, so the app hides the feature.

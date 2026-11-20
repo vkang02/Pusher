@@ -125,17 +125,32 @@ export async function spotify(userId, path, init = {}) {
 
 export const currentlyPlaying = (userId) => spotify(userId, '/me/player/currently-playing?additional_types=track,episode');
 
+// A medium-sized cover image (Spotify lists them largest first).
+export function pickImage(images = []) {
+  const art = images.find((i) => i.width === 300) || images[1] || images[0];
+  return art?.url || null;
+}
+
+// Run a player command; if Spotify says there's no active device (404), wake the first one it knows about
+// (the phone with the Spotify app open) and try again. run(query) must return a spotify() response.
+export async function onDevice(userId, run) {
+  const first = await run('');
+  if (first.noToken || first.status !== 404) return { r: first };
+  const devices = await spotify(userId, '/me/player/devices');
+  const device = devices.json?.devices?.find((d) => !d.is_restricted);
+  if (!device) return { r: first, noDevice: true };
+  return { r: await run(`?device_id=${encodeURIComponent(device.id)}`) };
+}
+
 // The bits of Spotify's "currently playing" answer the crew needs to see.
 export function fieldsFrom(json) {
   const item = json?.item;
   if (!item) return null;
-  const images = item.album?.images || item.images || [];
-  const art = images.find((i) => i.width === 300) || images[1] || images[0];
   return {
     track_uri: item.uri,
     title: item.name,
     artist: item.artists?.map((a) => a.name).join(', ') || item.show?.name || '',
-    album_art: art?.url || null,
+    album_art: pickImage(item.album?.images || item.images),
     is_playing: !!json.is_playing,
     progress_ms: json.progress_ms || 0,
     duration_ms: item.duration_ms || null,
