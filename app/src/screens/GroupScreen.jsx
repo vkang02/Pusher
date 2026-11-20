@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { colors, colorForIndex, initialsOf, relativeStatus } from '../lib/theme.js';
 
-export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar, onRename }) {
+export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar, onRename, music, onDisconnectSpotify }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -125,6 +125,33 @@ export default function GroupScreen({ group, members, myUserId, todayKey, avatar
           </div>
         );
       })}
+
+      {music?.available && (
+        <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 18, padding: 16, marginTop: 22 }}>
+          <div style={{ fontSize: 12, color: colors.textDim5, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>Spotify</div>
+          {music.link ? (
+            <>
+              <div style={{ fontSize: 14.5, fontWeight: 700 }}>Connected{music.link.display_name ? ` as ${music.link.display_name}` : ''}</div>
+              <div style={{ fontSize: 12.5, color: colors.textDim55, lineHeight: 1.45, margin: '4px 0 12px' }}>
+                Nothing is shared until you tap Start sharing inside a workout. Listening along needs Spotify Premium.
+              </div>
+              <button onClick={onDisconnectSpotify} disabled={music.busy} style={{ background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 11, padding: '9px 14px', fontSize: 13.5, fontWeight: 600 }}>
+                Disconnect Spotify
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12.5, color: colors.textDim55, lineHeight: 1.45, marginBottom: 12 }}>
+                Connect Spotify to share what you're playing during workouts and listen along with your crew.
+              </div>
+              <button onClick={music.onConnect} disabled={music.busy} style={{ background: colors.accent, color: '#0A0A0A', border: 'none', borderRadius: 11, padding: '10px 16px', fontSize: 14, fontWeight: 700 }}>
+                Connect Spotify
+              </button>
+            </>
+          )}
+          {music.error && <div style={{ fontSize: 12.5, color: '#F0A0A0', lineHeight: 1.45, marginTop: 10 }}>{music.error}</div>}
+        </div>
+      )}
 
       <button onClick={onSetPassword} style={{ width: '100%', background: 'none', border: `1px solid ${colors.border15}`, color: colors.textDim7, borderRadius: 12, padding: 13, fontSize: 14, fontWeight: 600, marginTop: 22 }}>
         Set a password

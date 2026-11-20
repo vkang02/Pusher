@@ -1,10 +1,11 @@
 import React from 'react';
 import { colors, summaryOf } from '../lib/theme.js';
 import ActivityCard from '../components/ActivityCard.jsx';
+import ListeningNow from '../components/ListeningNow.jsx';
 
 export default function HomeScreen({
   userName, group, totalLogs, todayEntry, recentLogs, myUserId,
-  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment, onJoinShared,
+  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment, onJoinShared, music,
 }) {
   return (
     <div style={{ padding: '58px 20px 20px' }}>
@@ -40,6 +41,8 @@ export default function HomeScreen({
           </>
         )}
       </div>
+
+      <ListeningNow music={music} />
 
       <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 11 }}>Group activity</div>
       {recentLogs.length > 0 ? (

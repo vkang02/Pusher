@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabaseClient.js';
 import * as api from './lib/api.js';
+import * as spotify from './lib/spotify.js';
 import { isoDay } from './lib/theme.js';
 import { draftKey as makeDraftKey, saveMarker, loadMarker, clearMarker } from './lib/drafts.js';
 import { parseWorkbookFile } from './lib/xlsxImport.js';
@@ -40,6 +41,11 @@ export default function App() {
   const [members, setMembers] = useState([]);
   const [avatarByUser, setAvatarByUser] = useState({});
   const [importMessage, setImportMessage] = useState(null);
+  const [spotifyState, setSpotifyState] = useState({ available: false, link: null });
+  const [nowPlaying, setNowPlaying] = useState([]);
+  const [musicBusy, setMusicBusy] = useState(false);
+  const [musicError, setMusicError] = useState(null);
+  const [listeningTo, setListeningTo] = useState(null);
 
   const [builderWorkout, setBuilderWorkout] = useState(undefined); // undefined = closed, null = new, object = editing
   const [logSheetCtx, setLogSheetCtx] = useState(null); // { workout, existingLog, prevLog, dateKey, isNew }
@@ -64,6 +70,12 @@ export default function App() {
     setAvatarByUser(map);
   }, []);
 
+  const loadMusic = useCallback(async (g, uid) => {
+    const [link, playing] = await Promise.all([spotify.fetchSpotifyLink(uid), spotify.fetchNowPlaying(g.id)]);
+    setSpotifyState(link);
+    setNowPlaying(playing);
+  }, []);
+
   const loadAppData = useCallback(async (g, uid) => {
     const [w, l, m, gl] = await Promise.all([
       api.fetchWorkouts(g.id),
@@ -75,8 +87,8 @@ export default function App() {
     setLogs(l);
     setMembers(m);
     setGroupLogs(gl);
-    await Promise.all([loadSocialData(gl), loadAvatars(m)]);
-  }, [loadSocialData, loadAvatars]);
+    await Promise.all([loadSocialData(gl), loadAvatars(m), loadMusic(g, uid)]);
+  }, [loadSocialData, loadAvatars, loadMusic]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -196,6 +208,9 @@ export default function App() {
     setLogComments([]);
     setMembers([]);
     setAvatarByUser({});
+    setSpotifyState({ available: false, link: null });
+    setNowPlaying([]);
+    setListeningTo(null);
     setTab('home');
   };
 
@@ -434,6 +449,76 @@ export default function App() {
     }
   }, [logs, groupLogs, userId]);
 
+  // Live "now playing" for the crew. Its own channel, so a problem here can never affect workout syncing.
+  useEffect(() => {
+    if (!group?.id || !userId) return undefined;
+    let timer;
+    const refreshMusic = () => spotify.fetchNowPlaying(group.id).then(setNowPlaying).catch(() => {});
+    const channel = supabase.channel(`music-${group.id}`);
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'now_playing', filter: `group_id=eq.${group.id}` }, () => {
+      clearTimeout(timer);
+      timer = setTimeout(refreshMusic, 250);
+    });
+    channel.subscribe();
+    // Also re-read every so often: it covers a dropped connection and fades out songs whose checker stopped.
+    const interval = setInterval(() => { if (document.visibilityState === 'visible') refreshMusic(); }, 20000);
+    return () => { clearTimeout(timer); clearInterval(interval); supabase.removeChannel(channel); };
+  }, [group?.id, userId]);
+
+  useEffect(() => { setMusicError(null); }, [tab]);
+
+  // Coming back from Spotify's sign-in page.
+  useEffect(() => {
+    if (!userId || !sessionChecked) return;
+    const result = spotify.takeSpotifyCallback();
+    if (!result) return;
+    if (result.error) { setMusicError(result.error); return; }
+    setMusicBusy(true);
+    spotify.connectSpotify(result.code)
+      .then((r) => setSpotifyState({ available: true, link: { display_name: r.displayName } }))
+      .catch((err) => setMusicError(err.message))
+      .finally(() => setMusicBusy(false));
+  }, [userId, sessionChecked]);
+
+  // Sharing music ends when the workout is closed.
+  const nowPlayingRef = useRef([]);
+  nowPlayingRef.current = nowPlaying;
+  const hadSheet = useRef(false);
+  useEffect(() => {
+    if (logSheetCtx) { hadSheet.current = true; return; }
+    if (!hadSheet.current) return;
+    hadSheet.current = false;
+    if (nowPlayingRef.current.some((r) => r.user_id === userId)) {
+      spotify.stopSharingMusic()
+        .then(() => setNowPlaying((rows) => rows.filter((r) => r.user_id !== userId)))
+        .catch(console.error);
+    }
+  }, [logSheetCtx]);
+
+  const runMusic = async (fn) => {
+    setMusicBusy(true);
+    setMusicError(null);
+    try { await fn(); } catch (err) { setMusicError(err.message); } finally { setMusicBusy(false); }
+  };
+  const handleStartMusic = () => runMusic(async () => {
+    const { row } = await spotify.startSharingMusic();
+    if (row) setNowPlaying((rows) => [...rows.filter((r) => r.user_id !== userId), row]);
+  });
+  const handleStopMusic = () => runMusic(async () => {
+    await spotify.stopSharingMusic();
+    setNowPlaying((rows) => rows.filter((r) => r.user_id !== userId));
+  });
+  const handleListenAlong = (item) => runMusic(async () => {
+    await spotify.listenAlong(item.user_id);
+    setListeningTo(item.user_id);
+  });
+  const handleDisconnectSpotify = () => runMusic(async () => {
+    await spotify.disconnectSpotify();
+    setSpotifyState((st) => ({ ...st, link: null }));
+    setNowPlaying((rows) => rows.filter((r) => r.user_id !== userId));
+    setListeningTo(null);
+  });
+
   // Remember which workout sheet is open, and put it back if the phone discarded the app meanwhile.
   const restoreTried = useRef(false);
   useEffect(() => {
@@ -545,6 +630,22 @@ export default function App() {
   for (const m of members) nameByUser[m.userId] = m.name;
   const nameFor = (uid) => (uid === userId ? 'You' : (nameByUser[uid] || 'Member'));
 
+  const music = {
+    available: spotifyState.available,
+    link: spotifyState.link,
+    mine: nowPlaying.find((r) => r.user_id === userId && Date.parse(r.sharing_until) > Date.now()) || null,
+    crew: nowPlaying
+      .filter((r) => r.user_id !== userId && spotify.isLive(r))
+      .map((r) => ({ ...r, name: nameByUser[r.user_id] || 'Member', avatarUrl: avatarByUser[r.user_id] || null })),
+    error: musicError,
+    busy: musicBusy,
+    listeningTo,
+    onConnect: () => spotify.startSpotifyLogin(),
+    onStart: handleStartMusic,
+    onStop: handleStopMusic,
+    onListen: handleListenAlong,
+  };
+
   const recentActivity = groupLogs.slice(0, 8).map((l) => ({
     ...l,
     isMine: l.user_id === userId,
@@ -576,6 +677,7 @@ export default function App() {
             onAddComment={handleAddComment}
             onDeleteComment={handleDeleteComment}
             onJoinShared={handleJoinShared}
+            music={music}
           />
         )}
         {tab === 'workouts' && (
@@ -602,6 +704,8 @@ export default function App() {
             onSetPassword={() => { clearAuthMessages(); setSettingPassword(true); }}
             onUploadAvatar={handleUploadAvatar}
             onRename={handleRename}
+            music={music}
+            onDisconnectSpotify={handleDisconnectSpotify}
           />
         )}
       </div>
@@ -631,6 +735,7 @@ export default function App() {
           onAddExercise={api.addExerciseToLog}
           onAdopt={(row) => setLogSheetCtx((c) => (c ? { ...c, existingLog: row } : c))}
           partnerNamesFor={partnerNamesFor}
+          music={music}
           prevLog={logSheetCtx.prevLog}
           dateKey={logSheetCtx.dateKey}
           isNew={logSheetCtx.isNew}

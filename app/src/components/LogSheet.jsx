@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PhotoViewer from './PhotoViewer.jsx';
+import MusicCard from './MusicCard.jsx';
 import { colors, longDate, shortDate, uid } from '../lib/theme.js';
 import { loadDraft, saveDraft, clearDraft } from '../lib/drafts.js';
 
@@ -22,7 +23,7 @@ export default function LogSheet({
   workout, existingLog, liveLog, prevLog, dateKey, isNew, readOnly, ownerName, photos,
   onClose, onSave, onDelete, onEnsureSaved, onUploadPhoto, onDeletePhoto, busy,
   onSyncCell, onSyncWeight, onSyncDuration, onStopSharing,
-  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor, draftKey,
+  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor, draftKey, music,
 }) {
   // Changes that were typed but not saved when the app was last closed or discarded by the phone.
   const [restored] = useState(() => {
@@ -421,6 +422,7 @@ export default function LogSheet({
             </span>
           </label>
         )}
+        {!readOnly && <MusicCard music={music} />}
         {restoredNote && (
           <div style={{ background: colors.accentSoft1, border: `1px solid ${colors.accentSoft3}`, borderRadius: 12, padding: '10px 13px', fontSize: 12.5, color: colors.accent, lineHeight: 1.45, marginBottom: 16 }}>
             Picked up where you left off. Your unsaved changes were restored.
