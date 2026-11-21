@@ -5,7 +5,7 @@ import ListeningNow from '../components/ListeningNow.jsx';
 
 export default function HomeScreen({
   userName, group, totalLogs, todayEntry, recentLogs, myUserId,
-  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment, onJoinShared, music,
+  onOpenLog, onGoWorkouts, onToggleReaction, onAddComment, onDeleteComment, onJoinShared, music, nudge,
 }) {
   return (
     <div style={{ padding: '58px 20px 20px' }}>
@@ -41,6 +41,20 @@ export default function HomeScreen({
           </>
         )}
       </div>
+
+      {nudge && (
+        <button
+          onClick={() => nudge.onOpen(null)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: colors.card, border: `1px solid ${colors.border}`, borderRadius: 18, padding: '14px 16px', marginBottom: 22, color: colors.text }}
+        >
+          <span style={{ fontSize: 22 }}>📣</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700 }}>Motivate the crew</span>
+            <span style={{ display: 'block', fontSize: 12.5, color: colors.textDim55 }}>Send a nudge that pops up on their screen</span>
+          </span>
+          <span style={{ background: colors.accentSoft12, border: `1px solid ${colors.accentSoft3}`, color: colors.accent, borderRadius: 14, padding: '6px 12px', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>Nudge</span>
+        </button>
+      )}
 
       <ListeningNow music={music} />
 

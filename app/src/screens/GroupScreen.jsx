@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { colors, colorForIndex, initialsOf, relativeStatus } from '../lib/theme.js';
 
-export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar, onRename, music, onDisconnectSpotify }) {
+export default function GroupScreen({ group, members, myUserId, todayKey, avatarByUser, onSignOut, onSetPassword, onUploadAvatar, onRename, music, onDisconnectSpotify, nudge }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -121,6 +121,14 @@ export default function GroupScreen({ group, members, myUserId, todayKey, avatar
               <div style={{ fontSize: 15.5, fontWeight: 600 }}>{m.name}</div>
               <div style={{ fontSize: 12.5, color: colors.textDim5 }}>{status}</div>
             </div>
+            {nudge && (
+              <button
+                onClick={() => nudge.onOpen(m.userId)} aria-label={`Nudge ${m.name}`}
+                style={{ background: 'none', border: `1px solid ${colors.accentSoft3}`, color: colors.accent, borderRadius: 10, fontSize: 11.5, fontWeight: 700, padding: '4px 10px', flexShrink: 0 }}
+              >
+                Nudge
+              </button>
+            )}
             <div style={{ fontSize: 14.5, fontWeight: 700, color: 'rgba(244,246,242,0.85)', flexShrink: 0 }}>{m.total}x</div>
           </div>
         );

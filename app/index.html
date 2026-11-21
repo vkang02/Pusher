@@ -12,6 +12,7 @@
       button, label, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
       /* Exact visible height on phones (100vh includes the area behind the browser bar). */
       .app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
+      @keyframes wb-nudge-in { from { transform: translateY(-120%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       /* iOS zooms the page when focusing any field under 16px. */
       @media (hover: none) and (pointer: coarse) {
         input, textarea, select { font-size: 16px !important; }

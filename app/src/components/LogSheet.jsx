@@ -23,7 +23,7 @@ export default function LogSheet({
   workout, existingLog, liveLog, prevLog, dateKey, isNew, readOnly, ownerName, photos,
   onClose, onSave, onDelete, onEnsureSaved, onUploadPhoto, onDeletePhoto, busy,
   onSyncCell, onSyncWeight, onSyncDuration, onStopSharing,
-  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor, draftKey, music,
+  logTogetherPref, onSetLogTogether, onEnsureShared, onPollShared, onAdopt, onAddExercise, partnerNamesFor, draftKey, music, nudge,
 }) {
   // Changes that were typed but not saved when the app was last closed or discarded by the phone.
   const [restored] = useState(() => {
@@ -385,7 +385,12 @@ export default function LogSheet({
             {longDate(dateKey)}{ownerName ? ` · ${ownerName}` : ''}
           </div>
         </div>
-        <button onClick={() => { discardDraft(); onClose(); }} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F4F6F2', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {nudge && !readOnly && (
+            <button onClick={() => nudge.onOpen(null)} aria-label="Nudge the crew" style={{ width: 34, height: 34, borderRadius: '50%', background: colors.accentSoft12, border: 'none', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📣</button>
+          )}
+          <button onClick={() => { discardDraft(); onClose(); }} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F4F6F2', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', padding: '0 20px', minHeight: 0 }}>

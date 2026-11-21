@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabaseClient.js';
 import * as api from './lib/api.js';
 import * as spotify from './lib/spotify.js';
+import * as nudges from './lib/nudges.js';
 import { isoDay } from './lib/theme.js';
 import { draftKey as makeDraftKey, saveMarker, loadMarker, clearMarker } from './lib/drafts.js';
 import { parseWorkbookFile } from './lib/xlsxImport.js';
@@ -16,6 +17,8 @@ import GroupScreen from './screens/GroupScreen.jsx';
 import TabBar from './components/TabBar.jsx';
 import WorkoutBuilderSheet from './components/WorkoutBuilderSheet.jsx';
 import LogSheet from './components/LogSheet.jsx';
+import NudgeSheet from './components/NudgeSheet.jsx';
+import NudgePopup from './components/NudgePopup.jsx';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -46,6 +49,9 @@ export default function App() {
   const [musicBusy, setMusicBusy] = useState(false);
   const [musicError, setMusicError] = useState(null);
   const [listeningTo, setListeningTo] = useState(null);
+  const [nudgeAvailable, setNudgeAvailable] = useState(false);
+  const [nudgeQueue, setNudgeQueue] = useState([]); // nudges waiting to pop up, oldest first
+  const [nudgeSheet, setNudgeSheet] = useState(undefined); // undefined = closed, null = to everyone, id = to one member
 
   const [builderWorkout, setBuilderWorkout] = useState(undefined); // undefined = closed, null = new, object = editing
   const [logSheetCtx, setLogSheetCtx] = useState(null); // { workout, existingLog, prevLog, dateKey, isNew }
@@ -211,6 +217,8 @@ export default function App() {
     setSpotifyState({ available: false, link: null });
     setNowPlaying([]);
     setListeningTo(null);
+    setNudgeQueue([]);
+    setNudgeSheet(undefined);
     setTab('home');
   };
 
@@ -465,6 +473,56 @@ export default function App() {
     return () => { clearTimeout(timer); clearInterval(interval); supabase.removeChannel(channel); };
   }, [group?.id, userId]);
 
+  // Nudges from the crew pop up on screen. Its own channel too, so it can't affect workout syncing.
+  useEffect(() => {
+    if (!group?.id || !userId) return undefined;
+    let cancelled = false;
+    let channel = null;
+    const seen = nudges.loadSeen(userId);
+
+    const enqueue = (rows) => {
+      const fresh = rows.filter((r) =>
+        r.sender_id !== userId && !seen.has(r.id) && (!r.recipient_id || r.recipient_id === userId)
+        && Date.now() - Date.parse(r.created_at) < nudges.NUDGE_FRESH_MS);
+      if (!fresh.length) return;
+      for (const r of fresh) seen.add(r.id);
+      nudges.saveSeen(userId, seen);
+      setNudgeQueue((q) => [...q, ...fresh.filter((r) => !q.some((x) => x.id === r.id))]);
+    };
+
+    // Catches up on anything sent while the phone had the app asleep.
+    const catchUp = () => nudges.fetchRecentNudges(group.id).then(({ available, rows }) => {
+      if (cancelled) return available;
+      setNudgeAvailable(available);
+      enqueue(rows);
+      return available;
+    }).catch(() => false);
+
+    catchUp().then((available) => {
+      if (cancelled || !available) return;
+      channel = supabase.channel(`nudges-${group.id}`);
+      channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nudges', filter: `group_id=eq.${group.id}` }, (payload) => enqueue([payload.new]));
+      channel.subscribe();
+    });
+
+    const onVisible = () => { if (document.visibilityState === 'visible') catchUp(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      if (channel) supabase.removeChannel(channel);
+      setNudgeQueue([]);
+    };
+  }, [group?.id, userId]);
+
+  const handleSendNudge = (recipientId, message) => nudges.sendNudge(group.id, userId, recipientId, message);
+  const dismissNudge = () => setNudgeQueue((q) => q.slice(1));
+  const replyToNudge = () => {
+    const current = nudgeQueue[0];
+    dismissNudge();
+    if (current) handleSendNudge(current.sender_id, 'On it 💪').catch(console.error);
+  };
+
   useEffect(() => { setMusicError(null); }, [tab]);
 
   // Coming back from Spotify's sign-in page.
@@ -646,6 +704,9 @@ export default function App() {
     onListen: handleListenAlong,
   };
 
+  const nudge = nudgeAvailable && members.length > 1 ? { onOpen: (recipientId) => setNudgeSheet(recipientId || null) } : null;
+  const popupNudge = nudgeQueue[0] || null;
+
   const recentActivity = groupLogs.slice(0, 8).map((l) => ({
     ...l,
     isMine: l.user_id === userId,
@@ -678,6 +739,7 @@ export default function App() {
             onDeleteComment={handleDeleteComment}
             onJoinShared={handleJoinShared}
             music={music}
+            nudge={nudge}
           />
         )}
         {tab === 'workouts' && (
@@ -706,11 +768,34 @@ export default function App() {
             onRename={handleRename}
             music={music}
             onDisconnectSpotify={handleDisconnectSpotify}
+            nudge={nudge}
           />
         )}
       </div>
 
       <TabBar tab={tab} onChange={setTab} />
+
+      {nudgeSheet !== undefined && nudge && (
+        <NudgeSheet
+          members={members}
+          myUserId={userId}
+          initialRecipient={nudgeSheet}
+          onSend={handleSendNudge}
+          onClose={() => setNudgeSheet(undefined)}
+        />
+      )}
+
+      {popupNudge && (
+        <NudgePopup
+          nudge={popupNudge}
+          senderName={nameByUser[popupNudge.sender_id] || 'Someone'}
+          avatarUrl={avatarByUser[popupNudge.sender_id] || null}
+          queued={nudgeQueue.length - 1}
+          autoDismissMs={logSheetCtx && !logSheetCtx.readOnly ? 9000 : 0}
+          onDismiss={dismissNudge}
+          onReply={replyToNudge}
+        />
+      )}
 
       {builderWorkout !== undefined && (
         <WorkoutBuilderSheet
@@ -736,6 +821,7 @@ export default function App() {
           onAdopt={(row) => setLogSheetCtx((c) => (c ? { ...c, existingLog: row } : c))}
           partnerNamesFor={partnerNamesFor}
           music={music}
+          nudge={nudge}
           prevLog={logSheetCtx.prevLog}
           dateKey={logSheetCtx.dateKey}
           isNew={logSheetCtx.isNew}
